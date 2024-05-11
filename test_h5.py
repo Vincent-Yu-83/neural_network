@@ -7,6 +7,6 @@ with h5py.File('./data_sets/test_catvnoncat.h5',"r") as f:
 
     dogs_group = f["list_classes"] # 从上面的结果可以发现根目录/下有个dogs的group,所以我们来研究一下它
     
+    # 打印出来
     print(np.array(dogs_group[:]))
-    
     
