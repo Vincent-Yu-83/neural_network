@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 import scipy
 from PIL import Image
 from scipy import ndimage
-from catvnoncat_utils import * 
-from catvnoncat_tensorflow_utils import tensorflow_model
-from catvnoncat_tensorflow_utils import predict as tensorflow_predict
+from tools.catvnoncat_utils import * 
+from tools.catvnoncat_tensorflow_utils import tensorflow_model
+from tools.catvnoncat_tensorflow_utils import predict as tensorflow_predict
 
 plt.rcParams['figure.figsize'] = (5.0, 4.0) # set default size of plots
 plt.rcParams['image.interpolation'] = 'nearest'
