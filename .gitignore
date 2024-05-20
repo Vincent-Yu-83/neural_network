@@ -161,3 +161,7 @@ cython_debug/
 tt.ipynb
 tta.py
 .gitignore
+mlp.params
+mydict
+x-file
+x-files
