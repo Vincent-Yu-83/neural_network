@@ -15,7 +15,7 @@ import requests
 from IPython import display
 from matplotlib import pyplot as plt
 
-d2l = sys.modules[__name__]
+tpy = sys.modules[__name__]
 
 import numpy as np
 import torch
@@ -37,7 +37,7 @@ def set_figsize(figsize=(3.5, 2.5)):
 
     Defined in :numref:`sec_calculus`"""
     use_svg_display()
-    d2l.plt.rcParams['figure.figsize'] = figsize
+    tpy.plt.rcParams['figure.figsize'] = figsize
 
 def set_axes(axes, xlabel, ylabel, xlim, ylim, xscale, yscale, legend):
     """设置matplotlib的轴
@@ -63,7 +63,7 @@ def plot(X, Y=None, xlabel=None, ylabel=None, legend=None, xlim=None,
         legend = []
 
     set_figsize(figsize)
-    axes = axes if axes else d2l.plt.gca()
+    axes = axes if axes else tpy.plt.gca()
 
     # 如果`X`有一个轴，输出True
     def has_one_axis(X):
@@ -118,22 +118,22 @@ def synthetic_data(w, b, num_examples):
     """生成y=Xw+b+噪声
 
     Defined in :numref:`sec_linear_scratch`"""
-    X = d2l.normal(0, 1, (num_examples, len(w)))
-    y = d2l.matmul(X, w) + b
-    y += d2l.normal(0, 0.01, y.shape)
-    return X, d2l.reshape(y, (-1, 1))
+    X = tpy.normal(0, 1, (num_examples, len(w)))
+    y = tpy.matmul(X, w) + b
+    y += tpy.normal(0, 0.01, y.shape)
+    return X, tpy.reshape(y, (-1, 1))
 
 def linreg(X, w, b):
     """线性回归模型
 
     Defined in :numref:`sec_linear_scratch`"""
-    return d2l.matmul(X, w) + b
+    return tpy.matmul(X, w) + b
 
 def squared_loss(y_hat, y):
     """均方损失
 
     Defined in :numref:`sec_linear_scratch`"""
-    return (y_hat - d2l.reshape(y, y_hat.shape)) ** 2 / 2
+    return (y_hat - tpy.reshape(y, y_hat.shape)) ** 2 / 2
 
 def sgd(params, lr, batch_size):
     """小批量随机梯度下降
@@ -164,7 +164,7 @@ def show_images(imgs, num_rows, num_cols, titles=None, scale=1.5):
 
     Defined in :numref:`sec_fashion_mnist`"""
     figsize = (num_cols * scale, num_rows * scale)
-    _, axes = d2l.plt.subplots(num_rows, num_cols, figsize=figsize)
+    _, axes = tpy.plt.subplots(num_rows, num_cols, figsize=figsize)
     axes = axes.flatten()
     for i, (ax, img) in enumerate(zip(axes, imgs)):
         if torch.is_tensor(img):
@@ -207,9 +207,9 @@ def accuracy(y_hat, y):
 
     Defined in :numref:`sec_softmax_scratch`"""
     if len(y_hat.shape) > 1 and y_hat.shape[1] > 1:
-        y_hat = d2l.argmax(y_hat, axis=1)
-    cmp = d2l.astype(y_hat, y.dtype) == y
-    return float(d2l.reduce_sum(d2l.astype(cmp, y.dtype)))
+        y_hat = tpy.argmax(y_hat, axis=1)
+    cmp = tpy.astype(y_hat, y.dtype) == y
+    return float(tpy.reduce_sum(tpy.astype(cmp, y.dtype)))
 
 def evaluate_accuracy(net, data_iter):
     """计算在指定数据集上模型的精度
@@ -220,7 +220,7 @@ def evaluate_accuracy(net, data_iter):
     metric = Accumulator(2)  # 正确预测数、预测总数
     with torch.no_grad():
         for X, y in data_iter:
-            metric.add(accuracy(net(X), y), d2l.size(y))
+            metric.add(accuracy(net(X), y), tpy.size(y))
     return metric[0] / metric[1]
 
 class Accumulator:
@@ -274,12 +274,12 @@ class Animator:
         # 增量地绘制多条线
         if legend is None:
             legend = []
-        d2l.use_svg_display()
-        self.fig, self.axes = d2l.plt.subplots(nrows, ncols, figsize=figsize)
+        tpy.use_svg_display()
+        self.fig, self.axes = tpy.plt.subplots(nrows, ncols, figsize=figsize)
         if nrows * ncols == 1:
             self.axes = [self.axes, ]
         # 使用lambda函数捕获参数
-        self.config_axes = lambda: d2l.set_axes(
+        self.config_axes = lambda: tpy.set_axes(
             self.axes[0], xlabel, ylabel, xlim, ylim, xscale, yscale, legend)
         self.X, self.Y, self.fmts = None, None, fmts
 
@@ -335,22 +335,22 @@ def predict_ch3(net, test_iter, n=6):
     Defined in :numref:`sec_softmax_scratch`"""
     for X, y in test_iter:
         break
-    trues = d2l.get_fashion_mnist_labels(y)
-    preds = d2l.get_fashion_mnist_labels(d2l.argmax(net(X), axis=1))
+    trues = tpy.get_fashion_mnist_labels(y)
+    preds = tpy.get_fashion_mnist_labels(tpy.argmax(net(X), axis=1))
     titles = [true +'\n' + pred for true, pred in zip(trues, preds)]
-    d2l.show_images(
-        d2l.reshape(X[0:n], (n, 28, 28)), 1, n, titles=titles[0:n])
+    tpy.show_images(
+        tpy.reshape(X[0:n], (n, 28, 28)), 1, n, titles=titles[0:n])
 
 def evaluate_loss(net, data_iter, loss):
     """评估给定数据集上模型的损失
 
     Defined in :numref:`sec_model_selection`"""
-    metric = d2l.Accumulator(2)  # 损失的总和,样本数量
+    metric = tpy.Accumulator(2)  # 损失的总和,样本数量
     for X, y in data_iter:
         out = net(X)
-        y = d2l.reshape(y, out.shape)
+        y = tpy.reshape(y, out.shape)
         l = loss(out, y)
-        metric.add(d2l.reduce_sum(l), d2l.size(l))
+        metric.add(tpy.reduce_sum(l), tpy.size(l))
     return metric[0] / metric[1]
 
 DATA_HUB = dict()
@@ -432,10 +432,10 @@ def corr2d(X, K):
 
     Defined in :numref:`sec_conv_layer`"""
     h, w = K.shape
-    Y = d2l.zeros((X.shape[0] - h + 1, X.shape[1] - w + 1))
+    Y = tpy.zeros((X.shape[0] - h + 1, X.shape[1] - w + 1))
     for i in range(Y.shape[0]):
         for j in range(Y.shape[1]):
-            Y[i, j] = d2l.reduce_sum((X[i: i + h, j: j + w] * K))
+            Y[i, j] = tpy.reduce_sum((X[i: i + h, j: j + w] * K))
     return Y
 
 def evaluate_accuracy_gpu(net, data_iter, device=None):
@@ -447,7 +447,7 @@ def evaluate_accuracy_gpu(net, data_iter, device=None):
         if not device:
             device = next(iter(net.parameters())).device
     # 正确预测的数量，总预测的数量
-    metric = d2l.Accumulator(2)
+    metric = tpy.Accumulator(2)
     with torch.no_grad():
         for X, y in data_iter:
             if isinstance(X, list):
@@ -456,7 +456,7 @@ def evaluate_accuracy_gpu(net, data_iter, device=None):
             else:
                 X = X.to(device)
             y = y.to(device)
-            metric.add(d2l.accuracy(net(X), y), d2l.size(y))
+            metric.add(tpy.accuracy(net(X), y), tpy.size(y))
     return metric[0] / metric[1]
 
 def train_ch6(net, train_iter, test_iter, num_epochs, lr, device):
@@ -471,12 +471,12 @@ def train_ch6(net, train_iter, test_iter, num_epochs, lr, device):
     net.to(device)
     optimizer = torch.optim.SGD(net.parameters(), lr=lr)
     loss = nn.CrossEntropyLoss()
-    animator = d2l.Animator(xlabel='epoch', xlim=[1, num_epochs],
+    animator = tpy.Animator(xlabel='epoch', xlim=[1, num_epochs],
                             legend=['train loss', 'train acc', 'test acc'])
-    timer, num_batches = d2l.Timer(), len(train_iter)
+    timer, num_batches = tpy.Timer(), len(train_iter)
     for epoch in range(num_epochs):
         # 训练损失之和，训练准确率之和，范例数
-        metric = d2l.Accumulator(3)
+        metric = tpy.Accumulator(3)
         net.train()
         for i, (X, y) in enumerate(train_iter):
             timer.start()
@@ -487,7 +487,7 @@ def train_ch6(net, train_iter, test_iter, num_epochs, lr, device):
             l.backward()
             optimizer.step()
             with torch.no_grad():
-                metric.add(l * X.shape[0], d2l.accuracy(y_hat, y), X.shape[0])
+                metric.add(l * X.shape[0], tpy.accuracy(y_hat, y), X.shape[0])
             timer.stop()
             train_l = metric[0] / metric[2]
             train_acc = metric[1] / metric[2]
@@ -525,14 +525,14 @@ class Residual(nn.Module):
         Y += X
         return F.relu(Y)
 
-d2l.DATA_HUB['time_machine'] = (d2l.DATA_URL + 'timemachine.txt',
+tpy.DATA_HUB['time_machine'] = (tpy.DATA_URL + 'timemachine.txt',
                                 '090b5e7e70c295757f55df93cb0a180b9691891a')
 
 def read_time_machine():
     """将时间机器数据集加载到文本行的列表中
 
     Defined in :numref:`sec_text_preprocessing`"""
-    with open(d2l.download('time_machine'), 'r') as f:
+    with open(tpy.download('time_machine'), 'r') as f:
         lines = f.readlines()
     return [re.sub('[^A-Za-z]+', ' ', line).strip().lower() for line in lines]
 
@@ -640,7 +640,7 @@ def seq_data_iter_random(corpus, batch_size, num_steps):
         initial_indices_per_batch = initial_indices[i: i + batch_size]
         X = [data(j) for j in initial_indices_per_batch]
         Y = [data(j + 1) for j in initial_indices_per_batch]
-        yield d2l.tensor(X), d2l.tensor(Y)
+        yield tpy.tensor(X), tpy.tensor(Y)
 
 def seq_data_iter_sequential(corpus, batch_size, num_steps):
     """使用顺序分区生成一个小批量子序列
@@ -649,8 +649,8 @@ def seq_data_iter_sequential(corpus, batch_size, num_steps):
     # 从随机偏移量开始划分序列
     offset = random.randint(0, num_steps)
     num_tokens = ((len(corpus) - offset - 1) // batch_size) * batch_size
-    Xs = d2l.tensor(corpus[offset: offset + num_tokens])
-    Ys = d2l.tensor(corpus[offset + 1: offset + 1 + num_tokens])
+    Xs = tpy.tensor(corpus[offset: offset + num_tokens])
+    Ys = tpy.tensor(corpus[offset + 1: offset + 1 + num_tokens])
     Xs, Ys = Xs.reshape(batch_size, -1), Ys.reshape(batch_size, -1)
     num_batches = Xs.shape[1] // num_steps
     for i in range(0, num_steps * num_batches, num_steps):
@@ -663,10 +663,10 @@ class SeqDataLoader:
     def __init__(self, batch_size, num_steps, use_random_iter, max_tokens):
         """Defined in :numref:`sec_language_model`"""
         if use_random_iter:
-            self.data_iter_fn = d2l.seq_data_iter_random
+            self.data_iter_fn = tpy.seq_data_iter_random
         else:
-            self.data_iter_fn = d2l.seq_data_iter_sequential
-        self.corpus, self.vocab = d2l.load_corpus_time_machine(max_tokens)
+            self.data_iter_fn = tpy.seq_data_iter_sequential
+        self.corpus, self.vocab = tpy.load_corpus_time_machine(max_tokens)
         self.batch_size, self.num_steps = batch_size, num_steps
 
     def __iter__(self):
@@ -703,7 +703,7 @@ def predict_ch8(prefix, num_preds, net, vocab, device):
     Defined in :numref:`sec_rnn_scratch`"""
     state = net.begin_state(batch_size=1, device=device)
     outputs = [vocab[prefix[0]]]
-    get_input = lambda: d2l.reshape(d2l.tensor(
+    get_input = lambda: tpy.reshape(tpy.tensor(
         [outputs[-1]], device=device), (1, 1))
     for y in prefix[1:]:  # 预热期
         _, state = net(get_input(), state)
@@ -730,8 +730,8 @@ def train_epoch_ch8(net, train_iter, loss, updater, device, use_random_iter):
     """训练网络一个迭代周期
 
     Defined in :numref:`sec_rnn_scratch`"""
-    state, timer = None, d2l.Timer()
-    metric = d2l.Accumulator(2)  # 训练损失之和,词元数量
+    state, timer = None, tpy.Timer()
+    metric = tpy.Accumulator(2)  # 训练损失之和,词元数量
     for X, Y in train_iter:
         if state is None or use_random_iter:
             # 在第一次迭代或使用随机抽样时初始化`state`
@@ -758,7 +758,7 @@ def train_epoch_ch8(net, train_iter, loss, updater, device, use_random_iter):
             grad_clipping(net, 1)
             # 因为已经调用了`mean`函数
             updater(batch_size=1)
-        metric.add(l * d2l.size(y), d2l.size(y))
+        metric.add(l * tpy.size(y), tpy.size(y))
     return math.exp(metric[0] / metric[1]), metric[1] / timer.stop()
 
 def train_ch8(net, train_iter, vocab, lr, num_epochs, device,
@@ -767,13 +767,13 @@ def train_ch8(net, train_iter, vocab, lr, num_epochs, device,
 
     Defined in :numref:`sec_rnn_scratch`"""
     loss = nn.CrossEntropyLoss()
-    animator = d2l.Animator(xlabel='epoch', ylabel='perplexity',
+    animator = tpy.Animator(xlabel='epoch', ylabel='perplexity',
                             legend=['train'], xlim=[10, num_epochs])
     # 初始化
     if isinstance(net, nn.Module):
         updater = torch.optim.SGD(net.parameters(), lr)
     else:
-        updater = lambda batch_size: d2l.sgd(net.params, lr, batch_size)
+        updater = lambda batch_size: tpy.sgd(net.params, lr, batch_size)
     predict = lambda prefix: predict_ch8(prefix, 50, net, vocab, device)
     # 训练和预测
     for epoch in range(num_epochs):
@@ -827,14 +827,14 @@ class RNNModel(nn.Module):
                         self.num_directions * self.rnn.num_layers,
                         batch_size, self.num_hiddens), device=device))
 
-d2l.DATA_HUB['fra-eng'] = (d2l.DATA_URL + 'fra-eng.zip',
+tpy.DATA_HUB['fra-eng'] = (tpy.DATA_URL + 'fra-eng.zip',
                            '94646ad1522d915e7b0f9296181140edcf86a4f5')
 
 def read_data_nmt():
     """载入“英语－法语”数据集
 
     Defined in :numref:`sec_machine_translation`"""
-    data_dir = d2l.download_extract('fra-eng')
+    data_dir = tpy.download_extract('fra-eng')
     with open(os.path.join(data_dir, 'fra.txt'), 'r',
              encoding='utf-8') as f:
         return f.read()
@@ -882,10 +882,10 @@ def build_array_nmt(lines, vocab, num_steps):
     Defined in :numref:`subsec_mt_data_loading`"""
     lines = [vocab[l] for l in lines]
     lines = [l + [vocab['<eos>']] for l in lines]
-    array = d2l.tensor([truncate_pad(
+    array = tpy.tensor([truncate_pad(
         l, num_steps, vocab['<pad>']) for l in lines])
-    valid_len = d2l.reduce_sum(
-        d2l.astype(array != vocab['<pad>'], d2l.int32), 1)
+    valid_len = tpy.reduce_sum(
+        tpy.astype(array != vocab['<pad>'], tpy.int32), 1)
     return array, valid_len
 
 def load_data_nmt(batch_size, num_steps, num_examples=600):
@@ -894,14 +894,14 @@ def load_data_nmt(batch_size, num_steps, num_examples=600):
     Defined in :numref:`subsec_mt_data_loading`"""
     text = preprocess_nmt(read_data_nmt())
     source, target = tokenize_nmt(text, num_examples)
-    src_vocab = d2l.Vocab(source, min_freq=2,
+    src_vocab = tpy.Vocab(source, min_freq=2,
                           reserved_tokens=['<pad>', '<bos>', '<eos>'])
-    tgt_vocab = d2l.Vocab(target, min_freq=2,
+    tgt_vocab = tpy.Vocab(target, min_freq=2,
                           reserved_tokens=['<pad>', '<bos>', '<eos>'])
     src_array, src_valid_len = build_array_nmt(source, src_vocab, num_steps)
     tgt_array, tgt_valid_len = build_array_nmt(target, tgt_vocab, num_steps)
     data_arrays = (src_array, src_valid_len, tgt_array, tgt_valid_len)
-    data_iter = d2l.load_array(data_arrays, batch_size)
+    data_iter = tpy.load_array(data_arrays, batch_size)
     return data_iter, src_vocab, tgt_vocab
 
 class Encoder(nn.Module):
@@ -939,7 +939,7 @@ class EncoderDecoder(nn.Module):
         dec_state = self.decoder.init_state(enc_outputs, *args)
         return self.decoder(dec_X, dec_state)
 
-class Seq2SeqEncoder(d2l.Encoder):
+class Seq2SeqEncoder(tpy.Encoder):
     """用于序列到序列学习的循环神经网络编码器
 
     Defined in :numref:`sec_seq2seq`"""
@@ -1005,11 +1005,11 @@ def train_seq2seq(net, data_iter, lr, num_epochs, tgt_vocab, device):
     optimizer = torch.optim.Adam(net.parameters(), lr=lr)
     loss = MaskedSoftmaxCELoss()
     net.train()
-    animator = d2l.Animator(xlabel='epoch', ylabel='loss',
+    animator = tpy.Animator(xlabel='epoch', ylabel='loss',
                      xlim=[10, num_epochs])
     for epoch in range(num_epochs):
-        timer = d2l.Timer()
-        metric = d2l.Accumulator(2)  # 训练损失总和，词元数量
+        timer = tpy.Timer()
+        metric = tpy.Accumulator(2)  # 训练损失总和，词元数量
         for batch in data_iter:
             optimizer.zero_grad()
             X, X_valid_len, Y, Y_valid_len = [x.to(device) for x in batch]
@@ -1019,7 +1019,7 @@ def train_seq2seq(net, data_iter, lr, num_epochs, tgt_vocab, device):
             Y_hat, _ = net(X, dec_input, X_valid_len)
             l = loss(Y_hat, Y, Y_valid_len)
             l.sum().backward()	# 损失函数的标量进行“反向传播”
-            d2l.grad_clipping(net, 1)
+            tpy.grad_clipping(net, 1)
             num_tokens = Y_valid_len.sum()
             optimizer.step()
             with torch.no_grad():
@@ -1039,7 +1039,7 @@ def predict_seq2seq(net, src_sentence, src_vocab, tgt_vocab, num_steps,
     src_tokens = src_vocab[src_sentence.lower().split(' ')] + [
         src_vocab['<eos>']]
     enc_valid_len = torch.tensor([len(src_tokens)], device=device)
-    src_tokens = d2l.truncate_pad(src_tokens, num_steps, src_vocab['<pad>'])
+    src_tokens = tpy.truncate_pad(src_tokens, num_steps, src_vocab['<pad>'])
     # 添加批量轴
     enc_X = torch.unsqueeze(
         torch.tensor(src_tokens, dtype=torch.long, device=device), dim=0)
@@ -1086,13 +1086,13 @@ def show_heatmaps(matrices, xlabel, ylabel, titles=None, figsize=(2.5, 2.5),
     """显示矩阵热图
 
     Defined in :numref:`sec_attention-cues`"""
-    d2l.use_svg_display()
+    tpy.use_svg_display()
     num_rows, num_cols = matrices.shape[0], matrices.shape[1]
-    fig, axes = d2l.plt.subplots(num_rows, num_cols, figsize=figsize,
+    fig, axes = tpy.plt.subplots(num_rows, num_cols, figsize=figsize,
                                  sharex=True, sharey=True, squeeze=False)
     for i, (row_axes, row_matrices) in enumerate(zip(axes, matrices)):
         for j, (ax, matrix) in enumerate(zip(row_axes, row_matrices)):
-            pcm = ax.imshow(d2l.numpy(matrix), cmap=cmap)
+            pcm = ax.imshow(tpy.numpy(matrix), cmap=cmap)
             if i == num_rows - 1:
                 ax.set_xlabel(xlabel)
             if j == 0:
@@ -1115,7 +1115,7 @@ def masked_softmax(X, valid_lens):
         else:
             valid_lens = valid_lens.reshape(-1)
         # 最后一轴上被掩蔽的元素使用一个非常大的负值替换，从而其softmax输出为0
-        X = d2l.sequence_mask(X.reshape(-1, shape[-1]), valid_lens,
+        X = tpy.sequence_mask(X.reshape(-1, shape[-1]), valid_lens,
                               value=-1e6)
         return nn.functional.softmax(X.reshape(shape), dim=-1)
 
@@ -1164,7 +1164,7 @@ class DotProductAttention(nn.Module):
         self.attention_weights = masked_softmax(scores, valid_lens)
         return torch.bmm(self.dropout(self.attention_weights), values)
 
-class AttentionDecoder(d2l.Decoder):
+class AttentionDecoder(tpy.Decoder):
     """带有注意力机制解码器的基本接口
 
     Defined in :numref:`sec_seq2seq_attention`"""
@@ -1183,7 +1183,7 @@ class MultiHeadAttention(nn.Module):
                  num_heads, dropout, bias=False, **kwargs):
         super(MultiHeadAttention, self).__init__(**kwargs)
         self.num_heads = num_heads
-        self.attention = d2l.DotProductAttention(dropout)
+        self.attention = tpy.DotProductAttention(dropout)
         self.W_q = nn.Linear(query_size, num_hiddens, bias=bias)
         self.W_k = nn.Linear(key_size, num_hiddens, bias=bias)
         self.W_v = nn.Linear(value_size, num_hiddens, bias=bias)
@@ -1249,8 +1249,8 @@ class PositionalEncoding(nn.Module):
         super(PositionalEncoding, self).__init__()
         self.dropout = nn.Dropout(dropout)
         # 创建一个足够长的`P`
-        self.P = d2l.zeros((1, max_len, num_hiddens))
-        X = d2l.arange(max_len, dtype=torch.float32).reshape(
+        self.P = tpy.zeros((1, max_len, num_hiddens))
+        X = tpy.arange(max_len, dtype=torch.float32).reshape(
             -1, 1) / torch.pow(10000, torch.arange(
             0, num_hiddens, 2, dtype=torch.float32) / num_hiddens)
         self.P[:, :, 0::2] = torch.sin(X)
@@ -1294,7 +1294,7 @@ class EncoderBlock(nn.Module):
                  norm_shape, ffn_num_input, ffn_num_hiddens, num_heads,
                  dropout, use_bias=False, **kwargs):
         super(EncoderBlock, self).__init__(**kwargs)
-        self.attention = d2l.MultiHeadAttention(
+        self.attention = tpy.MultiHeadAttention(
             key_size, query_size, value_size, num_hiddens, num_heads, dropout,
             use_bias)
         self.addnorm1 = AddNorm(norm_shape, dropout)
@@ -1306,7 +1306,7 @@ class EncoderBlock(nn.Module):
         Y = self.addnorm1(X, self.attention(X, X, X, valid_lens))
         return self.addnorm2(Y, self.ffn(Y))
 
-class TransformerEncoder(d2l.Encoder):
+class TransformerEncoder(tpy.Encoder):
     """transformer编码器
 
     Defined in :numref:`sec_transformer`"""
@@ -1316,7 +1316,7 @@ class TransformerEncoder(d2l.Encoder):
         super(TransformerEncoder, self).__init__(**kwargs)
         self.num_hiddens = num_hiddens
         self.embedding = nn.Embedding(vocab_size, num_hiddens)
-        self.pos_encoding = d2l.PositionalEncoding(num_hiddens, dropout)
+        self.pos_encoding = tpy.PositionalEncoding(num_hiddens, dropout)
         self.blks = nn.Sequential()
         for i in range(num_layers):
             self.blks.add_module("block"+str(i),
@@ -1337,7 +1337,7 @@ class TransformerEncoder(d2l.Encoder):
         return X
 
 def annotate(text, xy, xytext):
-    d2l.plt.gca().annotate(text, xy=xy, xytext=xytext,
+    tpy.plt.gca().annotate(text, xy=xy, xytext=xytext,
                            arrowprops=dict(arrowstyle='->'))
 
 def train_2d(trainer, steps=20, f_grad=None):
@@ -1360,23 +1360,23 @@ def show_trace_2d(f, results):
     """显示优化过程中2D变量的轨迹
 
     Defined in :numref:`subsec_gd-learningrate`"""
-    d2l.set_figsize()
-    d2l.plt.plot(*zip(*results), '-o', color='#ff7f0e')
-    x1, x2 = d2l.meshgrid(d2l.arange(-5.5, 1.0, 0.1),
-                          d2l.arange(-3.0, 1.0, 0.1))
-    d2l.plt.contour(x1, x2, f(x1, x2), colors='#1f77b4')
-    d2l.plt.xlabel('x1')
-    d2l.plt.ylabel('x2')
+    tpy.set_figsize()
+    tpy.plt.plot(*zip(*results), '-o', color='#ff7f0e')
+    x1, x2 = tpy.meshgrid(tpy.arange(-5.5, 1.0, 0.1),
+                          tpy.arange(-3.0, 1.0, 0.1))
+    tpy.plt.contour(x1, x2, f(x1, x2), colors='#1f77b4')
+    tpy.plt.xlabel('x1')
+    tpy.plt.ylabel('x2')
 
-d2l.DATA_HUB['airfoil'] = (d2l.DATA_URL + 'airfoil_self_noise.dat',
+tpy.DATA_HUB['airfoil'] = (tpy.DATA_URL + 'airfoil_self_noise.dat',
                            '76e5be1548fd8222e5074cf0faae75edff8cf93f')
 
 def get_data_ch11(batch_size=10, n=1500):
     """Defined in :numref:`sec_minibatches`"""
-    data = np.genfromtxt(d2l.download('airfoil'),
+    data = np.genfromtxt(tpy.download('airfoil'),
                          dtype=np.float32, delimiter='\t')
     data = torch.from_numpy((data - data.mean(axis=0)) / data.std(axis=0))
-    data_iter = d2l.load_array((data[:n, :-1], data[:n, -1]),
+    data_iter = tpy.load_array((data[:n, :-1], data[:n, -1]),
                                batch_size, is_train=True)
     return data_iter, data.shape[1]-1
 
@@ -1387,11 +1387,11 @@ def train_ch11(trainer_fn, states, hyperparams, data_iter,
     w = torch.normal(mean=0.0, std=0.01, size=(feature_dim, 1),
                      requires_grad=True)
     b = torch.zeros((1), requires_grad=True)
-    net, loss = lambda X: d2l.linreg(X, w, b), d2l.squared_loss
+    net, loss = lambda X: tpy.linreg(X, w, b), tpy.squared_loss
     # 训练模型
-    animator = d2l.Animator(xlabel='epoch', ylabel='loss',
+    animator = tpy.Animator(xlabel='epoch', ylabel='loss',
                             xlim=[0, num_epochs], ylim=[0.22, 0.35])
-    n, timer = 0, d2l.Timer()
+    n, timer = 0, tpy.Timer()
     for _ in range(num_epochs):
         for X, y in data_iter:
             l = loss(net(X), y).mean()
@@ -1401,7 +1401,7 @@ def train_ch11(trainer_fn, states, hyperparams, data_iter,
             if n % 200 == 0:
                 timer.stop()
                 animator.add(n/X.shape[0]/len(data_iter),
-                             (d2l.evaluate_loss(net, data_iter, loss),))
+                             (tpy.evaluate_loss(net, data_iter, loss),))
                 timer.start()
     print(f'loss: {animator.Y[0][-1]:.3f}, {timer.avg():.3f} sec/epoch')
     return timer.cumsum(), animator.Y[0]
@@ -1419,9 +1419,9 @@ def train_concise_ch11(trainer_fn, hyperparams, data_iter, num_epochs=4):
 
     # 注意：MSELoss计算平方误差时不带系数1/2
     loss = nn.MSELoss(reduction='none')
-    animator = d2l.Animator(xlabel='epoch', ylabel='loss',
+    animator = tpy.Animator(xlabel='epoch', ylabel='loss',
                             xlim=[0, num_epochs], ylim=[0.22, 0.35])
-    n, timer = 0, d2l.Timer()
+    n, timer = 0, tpy.Timer()
     for _ in range(num_epochs):
         for X, y in data_iter:
             optimizer.zero_grad()
@@ -1434,7 +1434,7 @@ def train_concise_ch11(trainer_fn, hyperparams, data_iter, num_epochs=4):
             if n % 200 == 0:
                 timer.stop()
                 animator.add(n/X.shape[0]/len(data_iter),
-                             (d2l.evaluate_loss(net, data_iter, loss),))
+                             (tpy.evaluate_loss(net, data_iter, loss),))
                 timer.start()
     print(f'loss: {animator.Y[0][-1]:.3f}, {timer.avg():.3f} sec/epoch')
 
@@ -1445,7 +1445,7 @@ class Benchmark:
         self.description = description
 
     def __enter__(self):
-        self.timer = d2l.Timer()
+        self.timer = tpy.Timer()
         return self
 
     def __exit__(self, *args):
@@ -1468,10 +1468,10 @@ def resnet18(num_classes, in_channels=1):
         blk = []
         for i in range(num_residuals):
             if i == 0 and not first_block:
-                blk.append(d2l.Residual(in_channels, out_channels,
+                blk.append(tpy.Residual(in_channels, out_channels,
                                         use_1x1conv=True, strides=2))
             else:
-                blk.append(d2l.Residual(out_channels, out_channels))
+                blk.append(tpy.Residual(out_channels, out_channels))
         return nn.Sequential(*blk)
 
     # 该模型使用了更小的卷积核、步长和填充，而且删除了最大汇聚层
@@ -1506,21 +1506,21 @@ def train_batch_ch13(net, X, y, loss, trainer, devices):
     l.sum().backward()
     trainer.step()
     train_loss_sum = l.sum()
-    train_acc_sum = d2l.accuracy(pred, y)
+    train_acc_sum = tpy.accuracy(pred, y)
     return train_loss_sum, train_acc_sum
 
 def train_ch13(net, train_iter, test_iter, loss, trainer, num_epochs,
-               devices=d2l.try_all_gpus()):
+               devices=tpy.try_all_gpus()):
     """用多GPU进行模型训练
 
     Defined in :numref:`sec_image_augmentation`"""
-    timer, num_batches = d2l.Timer(), len(train_iter)
-    animator = d2l.Animator(xlabel='epoch', xlim=[1, num_epochs], ylim=[0, 1],
+    timer, num_batches = tpy.Timer(), len(train_iter)
+    animator = tpy.Animator(xlabel='epoch', xlim=[1, num_epochs], ylim=[0, 1],
                             legend=['train loss', 'train acc', 'test acc'])
     net = nn.DataParallel(net, device_ids=devices).to(devices[0])
     for epoch in range(num_epochs):
         # 4个维度：储存训练损失，训练准确度，实例数，特点数
-        metric = d2l.Accumulator(4)
+        metric = tpy.Accumulator(4)
         for i, (features, labels) in enumerate(train_iter):
             timer.start()
             l, acc = train_batch_ch13(
@@ -1531,14 +1531,14 @@ def train_ch13(net, train_iter, test_iter, loss, trainer, num_epochs,
                 animator.add(epoch + (i + 1) / num_batches,
                              (metric[0] / metric[2], metric[1] / metric[3],
                               None))
-        test_acc = d2l.evaluate_accuracy_gpu(net, test_iter)
+        test_acc = tpy.evaluate_accuracy_gpu(net, test_iter)
         animator.add(epoch + 1, (None, None, test_acc))
     print(f'loss {metric[0] / metric[2]:.3f}, train acc '
           f'{metric[1] / metric[3]:.3f}, test acc {test_acc:.3f}')
     print(f'{metric[2] * num_epochs / timer.sum():.1f} examples/sec on '
           f'{str(devices)}')
 
-d2l.DATA_HUB['hotdog'] = (d2l.DATA_URL + 'hotdog.zip',
+tpy.DATA_HUB['hotdog'] = (tpy.DATA_URL + 'hotdog.zip',
                          'fba480ffa8aa7e0febbb511d181409f899b9baa5')
 
 def box_corner_to_center(boxes):
@@ -1550,7 +1550,7 @@ def box_corner_to_center(boxes):
     cy = (y1 + y2) / 2
     w = x2 - x1
     h = y2 - y1
-    boxes = d2l.stack((cx, cy, w, h), axis=-1)
+    boxes = tpy.stack((cx, cy, w, h), axis=-1)
     return boxes
 
 def box_center_to_corner(boxes):
@@ -1562,14 +1562,14 @@ def box_center_to_corner(boxes):
     y1 = cy - 0.5 * h
     x2 = cx + 0.5 * w
     y2 = cy + 0.5 * h
-    boxes = d2l.stack((x1, y1, x2, y2), axis=-1)
+    boxes = tpy.stack((x1, y1, x2, y2), axis=-1)
     return boxes
 
 def bbox_to_rect(bbox, color):
     """Defined in :numref:`sec_bbox`"""
     # 将边界框(左上x,左上y,右下x,右下y)格式转换成matplotlib格式：
     # ((左上x,左上y),宽,高)
-    return d2l.plt.Rectangle(
+    return tpy.plt.Rectangle(
         xy=(bbox[0], bbox[1]), width=bbox[2]-bbox[0], height=bbox[3]-bbox[1],
         fill=False, edgecolor=color, linewidth=2)
 
@@ -1580,8 +1580,8 @@ def multibox_prior(data, sizes, ratios):
     in_height, in_width = data.shape[-2:]
     device, num_sizes, num_ratios = data.device, len(sizes), len(ratios)
     boxes_per_pixel = (num_sizes + num_ratios - 1)
-    size_tensor = d2l.tensor(sizes, device=device)
-    ratio_tensor = d2l.tensor(ratios, device=device)
+    size_tensor = tpy.tensor(sizes, device=device)
+    ratio_tensor = tpy.tensor(ratios, device=device)
 
     # 为了将锚点移动到像素的中心，需要设置偏移量。
     # 因为一个像素的的高为1且宽为1，我们选择偏移我们的中心0.5
@@ -1628,7 +1628,7 @@ def show_bboxes(axes, bboxes, labels=None, colors=None):
     colors = _make_list(colors, ['b', 'g', 'r', 'm', 'c'])
     for i, bbox in enumerate(bboxes):
         color = colors[i % len(colors)]
-        rect = d2l.bbox_to_rect(d2l.numpy(bbox), color)
+        rect = tpy.bbox_to_rect(tpy.numpy(bbox), color)
         axes.add_patch(rect)
         if labels and len(labels) > i:
             text_color = 'k' if color == 'w' else 'w'
@@ -1689,11 +1689,11 @@ def offset_boxes(anchors, assigned_bb, eps=1e-6):
     """对锚框偏移量的转换
 
     Defined in :numref:`subsec_labeling-anchor-boxes`"""
-    c_anc = d2l.box_corner_to_center(anchors)
-    c_assigned_bb = d2l.box_corner_to_center(assigned_bb)
+    c_anc = tpy.box_corner_to_center(anchors)
+    c_assigned_bb = tpy.box_corner_to_center(assigned_bb)
     offset_xy = 10 * (c_assigned_bb[:, :2] - c_anc[:, :2]) / c_anc[:, 2:]
-    offset_wh = 5 * d2l.log(eps + c_assigned_bb[:, 2:] / c_anc[:, 2:])
-    offset = d2l.concat([offset_xy, offset_wh], axis=1)
+    offset_wh = 5 * tpy.log(eps + c_assigned_bb[:, 2:] / c_anc[:, 2:])
+    offset = tpy.concat([offset_xy, offset_wh], axis=1)
     return offset
 
 def multibox_target(anchors, labels):
@@ -1734,11 +1734,11 @@ def offset_inverse(anchors, offset_preds):
     """根据带有预测偏移量的锚框来预测边界框
 
     Defined in :numref:`subsec_labeling-anchor-boxes`"""
-    anc = d2l.box_corner_to_center(anchors)
+    anc = tpy.box_corner_to_center(anchors)
     pred_bbox_xy = (offset_preds[:, :2] * anc[:, 2:] / 10) + anc[:, :2]
-    pred_bbox_wh = d2l.exp(offset_preds[:, 2:] / 5) * anc[:, 2:]
-    pred_bbox = d2l.concat((pred_bbox_xy, pred_bbox_wh), axis=1)
-    predicted_bbox = d2l.box_center_to_corner(pred_bbox)
+    pred_bbox_wh = tpy.exp(offset_preds[:, 2:] / 5) * anc[:, 2:]
+    pred_bbox = tpy.concat((pred_bbox_xy, pred_bbox_wh), axis=1)
+    predicted_bbox = tpy.box_center_to_corner(pred_bbox)
     return predicted_bbox
 
 def nms(boxes, scores, iou_threshold):
@@ -1755,7 +1755,7 @@ def nms(boxes, scores, iou_threshold):
                       boxes[B[1:], :].reshape(-1, 4)).reshape(-1)
         inds = torch.nonzero(iou <= iou_threshold).reshape(-1)
         B = B[inds + 1]
-    return d2l.tensor(keep, device=boxes.device)
+    return tpy.tensor(keep, device=boxes.device)
 
 def multibox_detection(cls_probs, offset_preds, anchors, nms_threshold=0.5,
                        pos_threshold=0.009999999):
@@ -1789,17 +1789,17 @@ def multibox_detection(cls_probs, offset_preds, anchors, nms_threshold=0.5,
                                conf.unsqueeze(1),
                                predicted_bb), dim=1)
         out.append(pred_info)
-    return d2l.stack(out)
+    return tpy.stack(out)
 
-d2l.DATA_HUB['banana-detection'] = (
-    d2l.DATA_URL + 'banana-detection.zip',
+tpy.DATA_HUB['banana-detection'] = (
+    tpy.DATA_URL + 'banana-detection.zip',
     '5de26c8fce5ccdea9f91267273464dc968d20d72')
 
 def read_data_bananas(is_train=True):
     """读取香蕉检测数据集中的图像和标签
 
     Defined in :numref:`sec_object-detection-dataset`"""
-    data_dir = d2l.download_extract('banana-detection')
+    data_dir = tpy.download_extract('banana-detection')
     csv_fname = os.path.join(data_dir, 'bananas_train' if is_train
                              else 'bananas_val', 'label.csv')
     csv_data = pd.read_csv(csv_fname)
@@ -1839,7 +1839,7 @@ def load_data_bananas(batch_size):
                                            batch_size)
     return train_iter, val_iter
 
-d2l.DATA_HUB['voc2012'] = (d2l.DATA_URL + 'VOCtrainval_11-May-2012.tar',
+tpy.DATA_HUB['voc2012'] = (tpy.DATA_URL + 'VOCtrainval_11-May-2012.tar',
                            '4e443f8a2eca6b1dac8a6c57641b67dd40621a49')
 
 def read_voc_images(voc_dir, is_train=True):
@@ -1936,9 +1936,9 @@ def load_data_voc(batch_size, crop_size):
     """加载VOC语义分割数据集
 
     Defined in :numref:`sec_semantic_segmentation`"""
-    voc_dir = d2l.download_extract('voc2012', os.path.join(
+    voc_dir = tpy.download_extract('voc2012', os.path.join(
         'VOCdevkit', 'VOC2012'))
-    num_workers = d2l.get_dataloader_workers()
+    num_workers = tpy.get_dataloader_workers()
     train_iter = torch.utils.data.DataLoader(
         VOCSegDataset(True, crop_size, voc_dir), batch_size,
         shuffle=True, drop_last=True, num_workers=num_workers)
@@ -1947,7 +1947,7 @@ def load_data_voc(batch_size, crop_size):
         drop_last=True, num_workers=num_workers)
     return train_iter, test_iter
 
-d2l.DATA_HUB['cifar10_tiny'] = (d2l.DATA_URL + 'kaggle_cifar10_tiny.zip',
+tpy.DATA_HUB['cifar10_tiny'] = (tpy.DATA_URL + 'kaggle_cifar10_tiny.zip',
                                 '2068874e4b9a9f0fb07ebe0ad2b29754449ccacd')
 
 def read_csv_labels(fname):
@@ -1999,17 +1999,17 @@ def reorg_test(data_dir):
                  os.path.join(data_dir, 'train_valid_test', 'test',
                               'unknown'))
 
-d2l.DATA_HUB['dog_tiny'] = (d2l.DATA_URL + 'kaggle_dog_tiny.zip',
+tpy.DATA_HUB['dog_tiny'] = (tpy.DATA_URL + 'kaggle_dog_tiny.zip',
                             '0cb91d09b814ecdc07b50f31f8dcad3e81d6a86d')
 
-d2l.DATA_HUB['ptb'] = (d2l.DATA_URL + 'ptb.zip',
+tpy.DATA_HUB['ptb'] = (tpy.DATA_URL + 'ptb.zip',
                        '319d85e578af0cdc590547f26231e4e31cdf1e42')
 
 def read_ptb():
     """将PTB数据集加载到文本行的列表中
 
     Defined in :numref:`sec_word2vec_data`"""
-    data_dir = d2l.download_extract('ptb')
+    data_dir = tpy.download_extract('ptb')
     # Readthetrainingset.
     with open(os.path.join(data_dir, 'ptb.train.txt')) as f:
         raw_text = f.read()
@@ -2022,7 +2022,7 @@ def subsample(sentences, vocab):
     # 排除未知词元'<unk>'
     sentences = [[token for token in line if vocab[token] != vocab.unk]
                  for line in sentences]
-    counter = d2l.count_corpus(sentences)
+    counter = tpy.count_corpus(sentences)
     num_tokens = sum(counter.values())
 
     # 如果在下采样期间保留词元，则返回True
@@ -2105,16 +2105,16 @@ def batchify(data):
             [context + negative + [0] * (max_len - cur_len)]
         masks += [[1] * cur_len + [0] * (max_len - cur_len)]
         labels += [[1] * len(context) + [0] * (max_len - len(context))]
-    return (d2l.reshape(d2l.tensor(centers), (-1, 1)), d2l.tensor(
-        contexts_negatives), d2l.tensor(masks), d2l.tensor(labels))
+    return (tpy.reshape(tpy.tensor(centers), (-1, 1)), tpy.tensor(
+        contexts_negatives), tpy.tensor(masks), tpy.tensor(labels))
 
 def load_data_ptb(batch_size, max_window_size, num_noise_words):
     """下载PTB数据集，然后将其加载到内存中
 
     Defined in :numref:`subsec_word2vec-minibatch-loading`"""
-    num_workers = d2l.get_dataloader_workers()
+    num_workers = tpy.get_dataloader_workers()
     sentences = read_ptb()
-    vocab = d2l.Vocab(sentences, min_freq=10)
+    vocab = tpy.Vocab(sentences, min_freq=10)
     subsampled, counter = subsample(sentences, vocab)
     corpus = [vocab[line] for line in subsampled]
     all_centers, all_contexts = get_centers_and_contexts(
@@ -2143,16 +2143,16 @@ def load_data_ptb(batch_size, max_window_size, num_noise_words):
         collate_fn=batchify, num_workers=num_workers)
     return data_iter, vocab
 
-d2l.DATA_HUB['glove.6b.50d'] = (d2l.DATA_URL + 'glove.6B.50d.zip',
+tpy.DATA_HUB['glove.6b.50d'] = (tpy.DATA_URL + 'glove.6B.50d.zip',
                                 '0b8703943ccdb6eb788e6f091b8946e82231bc4d')
 
-d2l.DATA_HUB['glove.6b.100d'] = (d2l.DATA_URL + 'glove.6B.100d.zip',
+tpy.DATA_HUB['glove.6b.100d'] = (tpy.DATA_URL + 'glove.6B.100d.zip',
                                  'cd43bfb07e44e6f27cbcc7bc9ae3d80284fdaf5a')
 
-d2l.DATA_HUB['glove.42b.300d'] = (d2l.DATA_URL + 'glove.42B.300d.zip',
+tpy.DATA_HUB['glove.42b.300d'] = (tpy.DATA_URL + 'glove.42B.300d.zip',
                                   'b5116e234e9eb9076672cfeabf5469f3eec904fa')
 
-d2l.DATA_HUB['wiki.en'] = (d2l.DATA_URL + 'wiki.en.zip',
+tpy.DATA_HUB['wiki.en'] = (tpy.DATA_URL + 'wiki.en.zip',
                            'c1816da3821ae9f43899be655002f6c723e91b88')
 
 class TokenEmbedding:
@@ -2167,7 +2167,7 @@ class TokenEmbedding:
 
     def _load_embedding(self, embedding_name):
         idx_to_token, idx_to_vec = ['<unk>'], []
-        data_dir = d2l.download_extract(embedding_name)
+        data_dir = tpy.download_extract(embedding_name)
         # GloVe网站：https://nlp.stanford.edu/projects/glove/
         # fastText网站：https://fasttext.cc/
         with open(os.path.join(data_dir, 'vec.txt'), 'r') as f:
@@ -2179,12 +2179,12 @@ class TokenEmbedding:
                     idx_to_token.append(token)
                     idx_to_vec.append(elems)
         idx_to_vec = [[0] * len(idx_to_vec[0])] + idx_to_vec
-        return idx_to_token, d2l.tensor(idx_to_vec)
+        return idx_to_token, tpy.tensor(idx_to_vec)
 
     def __getitem__(self, tokens):
         indices = [self.token_to_idx.get(token, self.unknown_idx)
                    for token in tokens]
-        vecs = self.idx_to_vec[d2l.tensor(indices)]
+        vecs = self.idx_to_vec[tpy.tensor(indices)]
         return vecs
 
     def __len__(self):
@@ -2215,7 +2215,7 @@ class BERTEncoder(nn.Module):
         self.segment_embedding = nn.Embedding(2, num_hiddens)
         self.blks = nn.Sequential()
         for i in range(num_layers):
-            self.blks.add_module(f"{i}", d2l.EncoderBlock(
+            self.blks.add_module(f"{i}", tpy.EncoderBlock(
                 key_size, query_size, value_size, num_hiddens, norm_shape,
                 ffn_num_input, ffn_num_hiddens, num_heads, dropout, True))
         # 在BERT中，位置嵌入是可学习的，因此我们创建一个足够长的位置嵌入参数
@@ -2296,7 +2296,7 @@ class BERTModel(nn.Module):
         nsp_Y_hat = self.nsp(self.hidden(encoded_X[:, 0, :]))
         return encoded_X, mlm_Y_hat, nsp_Y_hat
 
-d2l.DATA_HUB['wikitext-2'] = (
+tpy.DATA_HUB['wikitext-2'] = (
     'https://s3.amazonaws.com/research.metamind.io/wikitext/'
     'wikitext-2-v1.zip', '3c914d17d80b1459be871a5039ac23e752a53cbe')
 
@@ -2330,7 +2330,7 @@ def _get_nsp_data_from_paragraph(paragraph, paragraphs, vocab, max_len):
         # 考虑1个'<cls>'词元和2个'<sep>'词元
         if len(tokens_a) + len(tokens_b) + 3 > max_len:
             continue
-        tokens, segments = d2l.get_tokens_and_segments(tokens_a, tokens_b)
+        tokens, segments = tpy.get_tokens_and_segments(tokens_a, tokens_b)
         nsp_data_from_paragraph.append((tokens, segments, is_next))
     return nsp_data_from_paragraph
 
@@ -2412,11 +2412,11 @@ class _WikiTextDataset(torch.utils.data.Dataset):
     def __init__(self, paragraphs, max_len):
         # 输入`paragraphs[i]`是代表段落的句子字符串列表；
         # 而输出`paragraphs[i]`是代表段落的句子列表，其中每个句子都是词元列表
-        paragraphs = [d2l.tokenize(
+        paragraphs = [tpy.tokenize(
             paragraph, token='word') for paragraph in paragraphs]
         sentences = [sentence for paragraph in paragraphs
                      for sentence in paragraph]
-        self.vocab = d2l.Vocab(sentences, min_freq=5, reserved_tokens=[
+        self.vocab = tpy.Vocab(sentences, min_freq=5, reserved_tokens=[
             '<pad>', '<mask>', '<cls>', '<sep>'])
         # 获取下一句子预测任务的数据
         examples = []
@@ -2446,8 +2446,8 @@ def load_data_wiki(batch_size, max_len):
     """加载WikiText-2数据集
 
     Defined in :numref:`subsec_prepare_mlm_data`"""
-    num_workers = d2l.get_dataloader_workers()
-    data_dir = d2l.download_extract('wikitext-2', 'wikitext-2')
+    num_workers = tpy.get_dataloader_workers()
+    data_dir = tpy.download_extract('wikitext-2', 'wikitext-2')
     paragraphs = _read_wiki(data_dir)
     train_set = _WikiTextDataset(paragraphs, max_len)
     train_iter = torch.utils.data.DataLoader(train_set, batch_size,
@@ -2472,7 +2472,7 @@ def _get_batch_loss_bert(net, loss, vocab_size, tokens_X,
     l = mlm_l + nsp_l
     return mlm_l, nsp_l, l
 
-d2l.DATA_HUB['aclImdb'] = (
+tpy.DATA_HUB['aclImdb'] = (
     'http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz',
     '01ada507287d82875905620988597833ad4e0903')
 
@@ -2495,19 +2495,19 @@ def load_data_imdb(batch_size, num_steps=500):
     """返回数据迭代器和IMDb评论数据集的词表
 
     Defined in :numref:`sec_sentiment`"""
-    data_dir = d2l.download_extract('aclImdb', 'aclImdb')
+    data_dir = tpy.download_extract('aclImdb', 'aclImdb')
     train_data = read_imdb(data_dir, True)
     test_data = read_imdb(data_dir, False)
-    train_tokens = d2l.tokenize(train_data[0], token='word')
-    test_tokens = d2l.tokenize(test_data[0], token='word')
-    vocab = d2l.Vocab(train_tokens, min_freq=5)
-    train_features = torch.tensor([d2l.truncate_pad(
+    train_tokens = tpy.tokenize(train_data[0], token='word')
+    test_tokens = tpy.tokenize(test_data[0], token='word')
+    vocab = tpy.Vocab(train_tokens, min_freq=5)
+    train_features = torch.tensor([tpy.truncate_pad(
         vocab[line], num_steps, vocab['<pad>']) for line in train_tokens])
-    test_features = torch.tensor([d2l.truncate_pad(
+    test_features = torch.tensor([tpy.truncate_pad(
         vocab[line], num_steps, vocab['<pad>']) for line in test_tokens])
-    train_iter = d2l.load_array((train_features, torch.tensor(train_data[1])),
+    train_iter = tpy.load_array((train_features, torch.tensor(train_data[1])),
                                 batch_size)
-    test_iter = d2l.load_array((test_features, torch.tensor(test_data[1])),
+    test_iter = tpy.load_array((test_features, torch.tensor(test_data[1])),
                                batch_size,
                                is_train=False)
     return train_iter, test_iter, vocab
@@ -2516,11 +2516,11 @@ def predict_sentiment(net, vocab, sequence):
     """预测文本序列的情感
 
     Defined in :numref:`sec_sentiment_rnn`"""
-    sequence = torch.tensor(vocab[sequence.split()], device=d2l.try_gpu())
+    sequence = torch.tensor(vocab[sequence.split()], device=tpy.try_gpu())
     label = torch.argmax(net(sequence.reshape(1, -1)), dim=1)
     return 'positive' if label == 1 else 'negative'
 
-d2l.DATA_HUB['SNLI'] = (
+tpy.DATA_HUB['SNLI'] = (
     'https://nlp.stanford.edu/projects/snli/snli_1.0.zip',
     '9fcde07509c7e87ec61c640c1b2753d9041758e4')
 
@@ -2552,10 +2552,10 @@ class SNLIDataset(torch.utils.data.Dataset):
     Defined in :numref:`sec_natural-language-inference-and-dataset`"""
     def __init__(self, dataset, num_steps, vocab=None):
         self.num_steps = num_steps
-        all_premise_tokens = d2l.tokenize(dataset[0])
-        all_hypothesis_tokens = d2l.tokenize(dataset[1])
+        all_premise_tokens = tpy.tokenize(dataset[0])
+        all_hypothesis_tokens = tpy.tokenize(dataset[1])
         if vocab is None:
-            self.vocab = d2l.Vocab(all_premise_tokens + \
+            self.vocab = tpy.Vocab(all_premise_tokens + \
                 all_hypothesis_tokens, min_freq=5, reserved_tokens=['<pad>'])
         else:
             self.vocab = vocab
@@ -2565,7 +2565,7 @@ class SNLIDataset(torch.utils.data.Dataset):
         print('read ' + str(len(self.premises)) + ' examples')
 
     def _pad(self, lines):
-        return torch.tensor([d2l.truncate_pad(
+        return torch.tensor([tpy.truncate_pad(
             self.vocab[line], self.num_steps, self.vocab['<pad>'])
                          for line in lines])
 
@@ -2579,8 +2579,8 @@ def load_data_snli(batch_size, num_steps=50):
     """下载SNLI数据集并返回数据迭代器和词表
 
     Defined in :numref:`sec_natural-language-inference-and-dataset`"""
-    num_workers = d2l.get_dataloader_workers()
-    data_dir = d2l.download_extract('SNLI')
+    num_workers = tpy.get_dataloader_workers()
+    data_dir = tpy.download_extract('SNLI')
     train_data = read_snli(data_dir, True)
     test_data = read_snli(data_dir, False)
     train_set = SNLIDataset(train_data, num_steps)
@@ -2598,8 +2598,8 @@ def predict_snli(net, vocab, premise, hypothesis):
 
     Defined in :numref:`sec_natural-language-inference-attention`"""
     net.eval()
-    premise = torch.tensor(vocab[premise], device=d2l.try_gpu())
-    hypothesis = torch.tensor(vocab[hypothesis], device=d2l.try_gpu())
+    premise = torch.tensor(vocab[premise], device=tpy.try_gpu())
+    hypothesis = torch.tensor(vocab[hypothesis], device=tpy.try_gpu())
     label = torch.argmax(net([premise.reshape((1, -1)),
                            hypothesis.reshape((1, -1))]), dim=1)
     return 'entailment' if label == 0 else 'contradiction' if label == 1 \
