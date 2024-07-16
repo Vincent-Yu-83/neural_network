@@ -194,9 +194,9 @@ def load_data_fashion_mnist(batch_size, resize=None):
         trans.insert(0, transforms.Resize(resize))
     trans = transforms.Compose(trans)
     mnist_train = torchvision.datasets.FashionMNIST(
-        root="./data_sets", train=True, transform=trans, download=False)
+        root="../data_sets", train=True, transform=trans, download=False)
     mnist_test = torchvision.datasets.FashionMNIST(
-        root="./data_sets", train=False, transform=trans, download=False)
+        root="../data_sets", train=False, transform=trans, download=False)
     return (data.DataLoader(mnist_train, batch_size, shuffle=True,
                             num_workers=get_dataloader_workers()),
             data.DataLoader(mnist_test, batch_size, shuffle=False,
@@ -356,7 +356,7 @@ def evaluate_loss(net, data_iter, loss):
 DATA_HUB = dict()
 DATA_URL = 'http://d2l-data.s3-accelerate.amazonaws.com/'
 
-def download(name, cache_dir=os.path.join('..', 'data')):
+def download(name, cache_dir=os.path.join('..', 'data_sets')):
     """下载一个DATA_HUB中的文件，返回本地文件名
 
     Defined in :numref:`sec_kaggle_house`"""
