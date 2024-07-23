@@ -438,7 +438,7 @@ def corr2d(X, K):
         for j in range(Y.shape[1]):
             Y[i, j] = tpy.reduce_sum((X[i: i + h, j: j + w] * K))
     return Y
-
+ 
 def evaluate_accuracy_gpu(net, data_iter, device=None):
     """使用GPU计算模型在数据集上的精度
 
