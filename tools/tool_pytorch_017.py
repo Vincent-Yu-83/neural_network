@@ -403,6 +403,7 @@ def download_all():
     for name in DATA_HUB:
         download(name)
 
+
 DATA_HUB['kaggle_house_train'] = (
     DATA_URL + 'kaggle_house_pred_train.csv',
     '585e9cc93e70b39160e7921475f9bcd7d31219ce')
