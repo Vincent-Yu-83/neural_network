@@ -166,3 +166,10 @@ mydict
 x-file
 x-files
 submission.csv
+data_sets/hotdog.zip
+data_sets/cifar-10-python.tar.gz
+data_sets/cifar-10-batches-py/*
+data_sets/hotdog/*
+data_sets/hotdog
+data_sets/VOCtrainval_11-May-2012.tar
+data_sets/VOCdevkit/VOC2012
