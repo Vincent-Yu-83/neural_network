@@ -173,3 +173,5 @@ data_sets/hotdog/*
 data_sets/hotdog
 data_sets/VOCtrainval_11-May-2012.tar
 data_sets/VOCdevkit/VOC2012
+data_sets/*
+data_sets/acllmdb/*
