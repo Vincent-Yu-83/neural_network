@@ -11,7 +11,17 @@ Neural Network项目是以学习、交流神经网络基础知识为目的的开
 ## Table of Contents
 
 #### 1. MLP
-* [dropout_pytorch.ipynb](MLP/dropout_pytorch.ipynb) [fashion_mnist_pytorch.ipynb](MLP/fashion_mnist_pytorch.ipynb) [fitting_pytorch.ipynb](MLP/fitting_pytorch.ipynb) [gpu_pytorch.ipynb](MLP/gpu_pytorch.ipynb) [initnet_pytorch.ipynb](MLP/initnet_pytorch.ipynb) [mnist_cross-entropy.ipynb](MLP/mnist_cross-entropy.ipynb) [mnist_pytorch.ipynb](MLP/mnist_pytorch.ipynb) [mnist_sigmoid.ipynb](MLP/mnist_sigmoid.ipynb) [mnist_tensorflow.ipynb](MLP/mnist_tensorflow.ipynb) [parameter_pytorch.ipynb](MLP/parameter_pytorch.ipynb) [weight_decay_pytorch.ipynb](MLP/weight_decay_pytorch.ipynb)
+* [dropout_pytorch.ipynb](MLP/dropout_pytorch.ipynb) 
+* [fashion_mnist_pytorch.ipynb](MLP/fashion_mnist_pytorch.ipynb) 
+* [fitting_pytorch.ipynb](MLP/fitting_pytorch.ipynb) 
+* [gpu_pytorch.ipynb](MLP/gpu_pytorch.ipynb) 
+* [initnet_pytorch.ipynb](MLP/initnet_pytorch.ipynb) 
+* [mnist_cross-entropy.ipynb](MLP/mnist_cross-entropy.ipynb) 
+* [mnist_pytorch.ipynb](MLP/mnist_pytorch.ipynb) 
+* [mnist_sigmoid.ipynb](MLP/mnist_sigmoid.ipynb) 
+* [mnist_tensorflow.ipynb](MLP/mnist_tensorflow.ipynb) 
+* [parameter_pytorch.ipynb](MLP/parameter_pytorch.ipynb) 
+* [weight_decay_pytorch.ipynb](MLP/weight_decay_pytorch.ipynb)
 
 #### 2. Intermediate
 * [Convolutional Neural Network](https://github.com/yunjey/pytorch-tutorial/tree/master/tutorials/02-intermediate/convolutional_neural_network/main.py#L35-L56)
