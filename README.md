@@ -1,19 +1,17 @@
-<p align="center"><img width="40%" src="logo/pytorch_logo_2018.svg" /></p>
+<p align="center">Neural Network</p>
 
 --------------------------------------------------------------------------------
 
-This repository provides tutorial code for deep learning researchers to learn [PyTorch](https://github.com/pytorch/pytorch). In the tutorial, most of the models were implemented with less than 30 lines of code. Before starting this tutorial, it is recommended to finish [Official Pytorch Tutorial](http://pytorch.org/tutorials/beginner/deep_learning_60min_blitz.html).
+Neural Network项目是以学习、交流神经网络基础知识为目的的开源项目。该项目结合了《Neural Network and Deep Learning》《动手学深度学习》《Deedp Learning》等书籍或教程所讲的知识和源代码，加上作者在此基础上根据理解和经验做出的一点丰富和注释，将神经网络的基础知识做了一个直观展示和讨论。
+本项目内容涵盖MLP、CNN、RNN、计算机视觉、transformer、bert等神经网络的演进框架，包括各个框架的基础实现和应用示例。
 
 
 <br/>
 
 ## Table of Contents
 
-#### 1. Basics
-* [PyTorch Basics](https://github.com/yunjey/pytorch-tutorial/tree/master/tutorials/01-basics/pytorch_basics/main.py)
-* [Linear Regression](https://github.com/yunjey/pytorch-tutorial/tree/master/tutorials/01-basics/linear_regression/main.py#L22-L23)
-* [Logistic Regression](https://github.com/yunjey/pytorch-tutorial/tree/master/tutorials/01-basics/logistic_regression/main.py#L33-L34)
-* [Feedforward Neural Network](https://github.com/yunjey/pytorch-tutorial/tree/master/tutorials/01-basics/feedforward_neural_network/main.py#L37-L49)
+#### 1. MLP
+* [text](MLP/dropout_pytorch.ipynb) [text](MLP/fashion_mnist_pytorch.ipynb) [text](MLP/fitting_pytorch.ipynb) [text](MLP/gpu_pytorch.ipynb) [text](MLP/initnet_pytorch.ipynb) [text](MLP/mnist_cross-entropy.ipynb) [text](MLP/mnist_pytorch.ipynb) [text](MLP/mnist_sigmoid.ipynb) [text](MLP/mnist_tensorflow.ipynb) [text](MLP/parameter_pytorch.ipynb) [text](MLP/weight_decay_pytorch.ipynb)
 
 #### 2. Intermediate
 * [Convolutional Neural Network](https://github.com/yunjey/pytorch-tutorial/tree/master/tutorials/02-intermediate/convolutional_neural_network/main.py#L35-L56)
