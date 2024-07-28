@@ -1,7 +1,7 @@
 # <p align="center">Neural Network</p>
 
 
-Neural Network项目是以学习、交流神经网络基础知识为目的的开源项目。该项目结合了《Neural Network and Deep Learning》《动手学深度学习》《Deedp Learning》等书籍或教程所讲的知识和源代码，加上作者在此基础上根据理解和经验做出的一点丰富和注释，将神经网络的基础知识做了一个直观展示和讨论。
+Neural Network项目是以学习、交流神经网络基础知识为目的的开源项目。该项目结合了《Neural Network and Deep Learning》《动手学深度学习》《Deedp Learning》等书籍或教程所讲的知识和源代码，加上作者在此基础上根据理解和经验做出的一点丰富和注释，将神经网络的基础知识做了一个直观展示和讨论。<br/>
 本项目内容涵盖MLP、CNN、RNN、计算机视觉、transformer、bert等神经网络的演进框架，包括各个框架的基础实现和应用示例。
 
 
