@@ -22,34 +22,62 @@ Neural Network项目是以学习、交流神经网络基础知识为目的的开
 * [parameter_pytorch.ipynb](MLP/parameter_pytorch.ipynb) 
 * [weight_decay_pytorch.ipynb](MLP/weight_decay_pytorch.ipynb)
 
-#### 2. Intermediate
-* [Convolutional Neural Network](https://github.com/yunjey/pytorch-tutorial/tree/master/tutorials/02-intermediate/convolutional_neural_network/main.py#L35-L56)
-* [Deep Residual Network](https://github.com/yunjey/pytorch-tutorial/tree/master/tutorials/02-intermediate/deep_residual_network/main.py#L76-L113)
-* [Recurrent Neural Network](https://github.com/yunjey/pytorch-tutorial/tree/master/tutorials/02-intermediate/recurrent_neural_network/main.py#L39-L58)
-* [Bidirectional Recurrent Neural Network](https://github.com/yunjey/pytorch-tutorial/tree/master/tutorials/02-intermediate/bidirectional_recurrent_neural_network/main.py#L39-L58)
-* [Language Model (RNN-LM)](https://github.com/yunjey/pytorch-tutorial/tree/master/tutorials/02-intermediate/language_model/main.py#L30-L50)
-
-#### 3. Advanced
-* [Generative Adversarial Networks](https://github.com/yunjey/pytorch-tutorial/blob/master/tutorials/03-advanced/generative_adversarial_network/main.py#L41-L57)
-* [Variational Auto-Encoder](https://github.com/yunjey/pytorch-tutorial/blob/master/tutorials/03-advanced/variational_autoencoder/main.py#L38-L65)
-* [Neural Style Transfer](https://github.com/yunjey/pytorch-tutorial/tree/master/tutorials/03-advanced/neural_style_transfer)
-* [Image Captioning (CNN-RNN)](https://github.com/yunjey/pytorch-tutorial/tree/master/tutorials/03-advanced/image_captioning)
-
-#### 4. Utilities
-* [TensorBoard in PyTorch](https://github.com/yunjey/pytorch-tutorial/tree/master/tutorials/04-utils/tensorboard)
-
+#### 2. CNN
+* [AlexNet.ipynb](CNN/AlexNet.ipynb) 
+* [BN.ipynb](CNN/BN.ipynb) 
+* [CNN-Explainer.html](CNN/CNN-Explainer.html) 
+* [cnn.ipynb](CNN/cnn.ipynb) 
+* [DenseNet.ipynb](CNN/DenseNet.ipynb) 
+* [GoogLeNet.ipynb](CNN/GoogLeNet.ipynb) 
+* [imgaug.html](CNN/imgaug.html) 
+* [LeNet.ipynb](CNN/LeNet.ipynb) 
+* [NiN.ipynb](CNN/NiN.ipynb) 
+* [ResNet.ipynb](CNN/ResNet.ipynb) 
+* [VGG.ipynb](CNN/VGG.ipynb)
+#### 3. RNN
+* [dataset.ipynb](RNN/dataset.ipynb) 
+* [GRU.ipynb](RNN/GRU.ipynb) 
+* [LSTM,.ipynb](RNN/LSTM,.ipynb) 
+* [RNN_pytorch.ipynb](RNN/RNN_pytorch.ipynb) 
+* [RNN.ipynb](RNN/RNN.ipynb) 
+* [seq.ipynb](RNN/seq.ipynb) 
+* [text.ipynb](RNN/text.ipynb) 
+* [transfer.ipynb](RNN/transfer.ipynb)
+#### 4. computer_vision
+* [anchor_box.ipynb](computer_vision/anchor_box.ipynb) 
+* [FCN.ipynb](computer_vision/FCN.ipynb) 
+* [fine_tuning.ipynb](computer_vision/fine_tuning.ipynb) 
+* [image_ augmentation.ipynb](<computer_vision/image_ augmentation.ipynb>) 
+* [object_recognition.ipynb](computer_vision/object_recognition.ipynb) 
+* [style_transfer.ipynb](computer_vision/style_transfer.ipynb)
+#### 5. transformers
+* [bertviz.ipynb](transformers/bertviz.ipynb) 
+* [GloVe.ipynb](transformers/GloVe.ipynb) 
+* [natural_language_inference_attention.ipynb](transformers/natural_language_inference_attention.ipynb) 
+* [natural_language_inference_bert.ipynb](transformers/natural_language_inference_bert.ipynb) 
+* [natural_language_inference_SNLI.ipynb](transformers/natural_language_inference_SNLI.ipynb) 
+* [pretrain_bert_datasets.ipynb](transformers/pretrain_bert_datasets.ipynb) 
+* [pretrain_bert.ipynb](transformers/pretrain_bert.ipynb) 
+* [sentiment_analysis_BiRNN.ipynb](transformers/sentiment_analysis_BiRNN.ipynb) 
+* [sentiment_analysis_CNN.ipynb](transformers/sentiment_analysis_CNN.ipynb) 
+* [sentiment_analysis_datasets.ipynb](transformers/sentiment_analysis_datasets.ipynb) 
+* [transformer.ipynb](transformers/transformer.ipynb) 
+* [word2vec.ipynb](transformers/word2vec.ipynb)
+#### 6. tools
+* [tool_pytorch_017.py](tools/tool_pytorch_017.py)
 
 <br/>
 
 ## Getting Started
 ```bash
-$ git clone https://github.com/yunjey/pytorch-tutorial.git
-$ cd pytorch-tutorial/tutorials/PATH_TO_PROJECT
-$ python main.py
+$ git clone https://github.com/Vincent-Yu-83/neural_network.git
+$ pip install jupyterlab
+$ pip install ipykernel
+$ pip install pytorch
 ```
 
 <br/>
 
 ## Dependencies
-* [Python 2.7 or 3.5+](https://www.continuum.io/downloads)
-* [PyTorch 0.4.0+](http://pytorch.org/)
+* [Python 3.8](https://www.continuum.io/downloads)
+* [PyTorch 2.2.2](http://pytorch.org/)
