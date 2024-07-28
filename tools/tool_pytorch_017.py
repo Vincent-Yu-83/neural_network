@@ -26,6 +26,10 @@ from torch.nn import functional as F
 from torch.utils import data
 from torchvision import transforms
 
+# -----------------------------------------
+# 统计&可视化
+# -----------------------------------------
+
 def use_svg_display():
     """使用svg格式在Jupyter中显示绘图"""
     display.set_matplotlib_formats('svg')
@@ -78,66 +82,6 @@ def plot(X, Y=None, xlabel=None, ylabel=None, legend=None, xlim=None,
             axes.plot(y, fmt)
     set_axes(axes, xlabel, ylabel, xlim, ylim, xscale, yscale, legend)
 
-class Timer:
-    """记录多次运行时间"""
-    def __init__(self):
-        self.times = []
-        self.start()
-
-    def start(self):
-        """启动计时器"""
-        self.tik = time.time()
-
-    def stop(self):
-        """停止计时器并将时间记录在列表中"""
-        self.times.append(time.time() - self.tik)
-        return self.times[-1]
-
-    def avg(self):
-        """返回平均时间"""
-        return sum(self.times) / len(self.times)
-
-    def sum(self):
-        """返回时间总和"""
-        return sum(self.times)
-
-    def cumsum(self):
-        """返回累计时间"""
-        return np.array(self.times).cumsum().tolist()
-
-def synthetic_data(w, b, num_examples):
-    """生成y=Xw+b+噪声"""
-    X = tpy.normal(0, 1, (num_examples, len(w)))
-    y = tpy.matmul(X, w) + b
-    y += tpy.normal(0, 0.01, y.shape)
-    return X, tpy.reshape(y, (-1, 1))
-
-def linreg(X, w, b):
-    """线性回归模型"""
-    return tpy.matmul(X, w) + b
-
-def squared_loss(y_hat, y):
-    """均方损失"""
-    return (y_hat - tpy.reshape(y, y_hat.shape)) ** 2 / 2
-
-def sgd(params, lr, batch_size):
-    """小批量随机梯度下降"""
-    with torch.no_grad():
-        for param in params:
-            param -= lr * param.grad / batch_size
-            param.grad.zero_()
-
-def load_array(data_arrays, batch_size, is_train=True):
-    """构造一个PyTorch数据迭代器"""
-    dataset = data.TensorDataset(*data_arrays)
-    return data.DataLoader(dataset, batch_size, shuffle=is_train)
-
-def get_fashion_mnist_labels(labels):
-    """返回Fashion-MNIST数据集的文本标签"""
-    text_labels = ['t-shirt', 'trouser', 'pullover', 'dress', 'coat',
-                   'sandal', 'shirt', 'sneaker', 'bag', 'ankle boot']
-    return [text_labels[int(i)] for i in labels]
-
 def show_images(imgs, num_rows, num_cols, titles=None, scale=1.5):
     """绘制图像列表"""
     figsize = (num_cols * scale, num_rows * scale)
@@ -155,25 +99,6 @@ def show_images(imgs, num_rows, num_cols, titles=None, scale=1.5):
         if titles:
             ax.set_title(titles[i])
     return axes
-
-def get_dataloader_workers():
-    """使用4个进程来读取数据"""
-    return 4
-
-def load_data_fashion_mnist(batch_size, resize=None):
-    """下载Fashion-MNIST数据集，然后将其加载到内存中"""
-    trans = [transforms.ToTensor()]
-    if resize:
-        trans.insert(0, transforms.Resize(resize))
-    trans = transforms.Compose(trans)
-    mnist_train = torchvision.datasets.FashionMNIST(
-        root="../data_sets", train=True, transform=trans, download=False)
-    mnist_test = torchvision.datasets.FashionMNIST(
-        root="../data_sets", train=False, transform=trans, download=False)
-    return (data.DataLoader(mnist_train, batch_size, shuffle=True,
-                            num_workers=get_dataloader_workers()),
-            data.DataLoader(mnist_test, batch_size, shuffle=False,
-                            num_workers=get_dataloader_workers()))
 
 def accuracy(y_hat, y):
     """计算预测正确的数量"""
@@ -256,58 +181,134 @@ def evaluate_loss(net, data_iter, loss):
         metric.add(tpy.reduce_sum(l), tpy.size(l))
     return metric[0] / metric[1]
 
-DATA_HUB = dict()
-DATA_URL = 'http://d2l-data.s3-accelerate.amazonaws.com/'
+def evaluate_accuracy_gpu(net, data_iter, device=None):
+    """使用GPU计算模型在数据集上的精度"""
+    if isinstance(net, nn.Module):
+        net.eval()  # 设置为评估模式
+        if not device:
+            device = next(iter(net.parameters())).device
+    # 正确预测的数量，总预测的数量
+    metric = tpy.Accumulator(2)
+    with torch.no_grad():
+        for X, y in data_iter:
+            if isinstance(X, list):
+                # BERT微调所需的（之后将介绍）
+                X = [x.to(device) for x in X]
+            else:
+                X = X.to(device)
+            y = y.to(device)
+            metric.add(tpy.accuracy(net(X), y), tpy.size(y))
+    return metric[0] / metric[1]
 
-def download(name, cache_dir=os.path.join('..', 'data_sets')):
-    """下载一个DATA_HUB中的文件，返回本地文件名"""
-    assert name in DATA_HUB, f"{name} 不存在于 {DATA_HUB}"
-    url, sha1_hash = DATA_HUB[name]
-    os.makedirs(cache_dir, exist_ok=True)
-    fname = os.path.join(cache_dir, url.split('/')[-1])
-    if os.path.exists(fname):
-        sha1 = hashlib.sha1()
-        with open(fname, 'rb') as f:
-            while True:
-                data = f.read(1048576)
-                if not data:
-                    break
-                sha1.update(data)
-        if sha1.hexdigest() == sha1_hash:
-            return fname  # 命中缓存
-    print(f'正在从{url}下载{fname}...')
-    r = requests.get(url, stream=True, verify=True)
-    with open(fname, 'wb') as f:
-        f.write(r.content)
-    return fname
+def bleu(pred_seq, label_seq, k):
+    """计算BLEU"""
+    pred_tokens, label_tokens = pred_seq.split(' '), label_seq.split(' ')
+    len_pred, len_label = len(pred_tokens), len(label_tokens)
+    score = math.exp(min(0, 1 - len_label / len_pred))
+    for n in range(1, k + 1):
+        num_matches, label_subs = 0, collections.defaultdict(int)
+        for i in range(len_label - n + 1):
+            label_subs[' '.join(label_tokens[i: i + n])] += 1
+        for i in range(len_pred - n + 1):
+            if label_subs[' '.join(pred_tokens[i: i + n])] > 0:
+                num_matches += 1
+                label_subs[' '.join(pred_tokens[i: i + n])] -= 1
+        score *= math.pow(num_matches / (len_pred - n + 1), math.pow(0.5, n))
+    return score
 
-def download_extract(name, folder=None):
-    """下载并解压zip/tar文件"""
-    fname = download(name)
-    base_dir = os.path.dirname(fname)
-    data_dir, ext = os.path.splitext(fname)
-    if ext == '.zip':
-        fp = zipfile.ZipFile(fname, 'r')
-    elif ext in ('.tar', '.gz'):
-        fp = tarfile.open(fname, 'r')
-    else:
-        assert False, '只有zip/tar文件可以被解压缩'
-    fp.extractall(base_dir)
-    return os.path.join(base_dir, folder) if folder else data_dir
+def show_heatmaps(matrices, xlabel, ylabel, titles=None, figsize=(2.5, 2.5),
+                  cmap='Reds'):
+    """显示矩阵热图"""
+    tpy.use_svg_display()
+    num_rows, num_cols = matrices.shape[0], matrices.shape[1]
+    fig, axes = tpy.plt.subplots(num_rows, num_cols, figsize=figsize,
+                                 sharex=True, sharey=True, squeeze=False)
+    for i, (row_axes, row_matrices) in enumerate(zip(axes, matrices)):
+        for j, (ax, matrix) in enumerate(zip(row_axes, row_matrices)):
+            pcm = ax.imshow(tpy.numpy(matrix), cmap=cmap)
+            if i == num_rows - 1:
+                ax.set_xlabel(xlabel)
+            if j == 0:
+                ax.set_ylabel(ylabel)
+            if titles:
+                ax.set_title(titles[j])
+    fig.colorbar(pcm, ax=axes, shrink=0.6);
+    
+def show_trace_2d(f, results):
+    """显示优化过程中2D变量的轨迹"""
+    tpy.set_figsize()
+    tpy.plt.plot(*zip(*results), '-o', color='#ff7f0e')
+    x1, x2 = tpy.meshgrid(tpy.arange(-5.5, 1.0, 0.1),
+                          tpy.arange(-3.0, 1.0, 0.1))
+    tpy.plt.contour(x1, x2, f(x1, x2), colors='#1f77b4')
+    tpy.plt.xlabel('x1')
+    tpy.plt.ylabel('x2')
+    
+def count_corpus(tokens):
+    """统计词元的频率"""
+    # 这里的`tokens`是1D列表或2D列表
+    if len(tokens) == 0 or isinstance(tokens[0], list):
+        # 将词元列表展平成一个列表
+        tokens = [token for line in tokens for token in line]
+    return collections.Counter(tokens)
 
-def download_all():
-    """下载DATA_HUB中的所有文件"""
-    for name in DATA_HUB:
-        download(name)
 
 
-DATA_HUB['kaggle_house_train'] = (
-    DATA_URL + 'kaggle_house_pred_train.csv',
-    '585e9cc93e70b39160e7921475f9bcd7d31219ce')
+# -----------------------------------------
+# 工具
+# -----------------------------------------
+class Timer:
+    """记录多次运行时间"""
+    def __init__(self):
+        self.times = []
+        self.start()
 
-DATA_HUB['kaggle_house_test'] = (
-    DATA_URL + 'kaggle_house_pred_test.csv',
-    'fa19780a7b011d9b009e8bff8e99922a8ee2eb90')
+    def start(self):
+        """启动计时器"""
+        self.tik = time.time()
+
+    def stop(self):
+        """停止计时器并将时间记录在列表中"""
+        self.times.append(time.time() - self.tik)
+        return self.times[-1]
+
+    def avg(self):
+        """返回平均时间"""
+        return sum(self.times) / len(self.times)
+
+    def sum(self):
+        """返回时间总和"""
+        return sum(self.times)
+
+    def cumsum(self):
+        """返回累计时间"""
+        return np.array(self.times).cumsum().tolist()
+
+def synthetic_data(w, b, num_examples):
+    """生成y=Xw+b+噪声"""
+    X = tpy.normal(0, 1, (num_examples, len(w)))
+    y = tpy.matmul(X, w) + b
+    y += tpy.normal(0, 0.01, y.shape)
+    return X, tpy.reshape(y, (-1, 1))
+
+def linreg(X, w, b):
+    """线性回归模型"""
+    return tpy.matmul(X, w) + b
+
+def squared_loss(y_hat, y):
+    """均方损失"""
+    return (y_hat - tpy.reshape(y, y_hat.shape)) ** 2 / 2
+
+def sgd(params, lr, batch_size):
+    """小批量随机梯度下降"""
+    with torch.no_grad():
+        for param in params:
+            param -= lr * param.grad / batch_size
+            param.grad.zero_()
+
+def get_dataloader_workers():
+    """使用4个进程来读取数据"""
+    return 4
 
 def try_gpu(i=0):
     """如果存在，则返回gpu(i)，否则返回cpu()"""
@@ -329,28 +330,6 @@ def corr2d(X, K):
         for j in range(Y.shape[1]):
             Y[i, j] = tpy.reduce_sum((X[i: i + h, j: j + w] * K))
     return Y
- 
-def evaluate_accuracy_gpu(net, data_iter, device=None):
-    """使用GPU计算模型在数据集上的精度"""
-    if isinstance(net, nn.Module):
-        net.eval()  # 设置为评估模式
-        if not device:
-            device = next(iter(net.parameters())).device
-    # 正确预测的数量，总预测的数量
-    metric = tpy.Accumulator(2)
-    with torch.no_grad():
-        for X, y in data_iter:
-            if isinstance(X, list):
-                # BERT微调所需的（之后将介绍）
-                X = [x.to(device) for x in X]
-            else:
-                X = X.to(device)
-            y = y.to(device)
-            metric.add(tpy.accuracy(net(X), y), tpy.size(y))
-    return metric[0] / metric[1]
-
-tpy.DATA_HUB['time_machine'] = (tpy.DATA_URL + 'timemachine.txt',
-                                '090b5e7e70c295757f55df93cb0a180b9691891a')
 
 def read_time_machine():
     """将时间机器数据集加载到文本行的列表中"""
@@ -410,26 +389,6 @@ class Vocab:
     @property
     def token_freqs(self):
         return self._token_freqs
-
-def count_corpus(tokens):
-    """统计词元的频率"""
-    # 这里的`tokens`是1D列表或2D列表
-    if len(tokens) == 0 or isinstance(tokens[0], list):
-        # 将词元列表展平成一个列表
-        tokens = [token for line in tokens for token in line]
-    return collections.Counter(tokens)
-
-def load_corpus_time_machine(max_tokens=-1):
-    """返回时光机器数据集的词元索引列表和词表"""
-    lines = read_time_machine()
-    tokens = tokenize(lines, 'char')
-    vocab = Vocab(tokens)
-    # 因为时光机器数据集中的每个文本行不一定是一个句子或一个段落，
-    # 所以将所有文本行展平到一个列表中
-    corpus = [vocab[token] for line in tokens for token in line]
-    if max_tokens > 0:
-        corpus = corpus[:max_tokens]
-    return corpus, vocab
 
 def seq_data_iter_random(corpus, batch_size, num_steps):
     """使用随机抽样生成一个小批量子序列"""
@@ -499,9 +458,156 @@ def grad_clipping(net, theta):
     if norm > theta:
         for param in params:
             param.grad[:] *= theta / norm
+            
 
-tpy.DATA_HUB['fra-eng'] = (tpy.DATA_URL + 'fra-eng.zip',
+
+
+# -----------------------------------------
+# 数据集操作
+# -----------------------------------------
+
+DATA_HUB = dict()
+DATA_URL = 'http://d2l-data.s3-accelerate.amazonaws.com/'
+
+DATA_HUB['kaggle_house_train'] = (
+    DATA_URL + 'kaggle_house_pred_train.csv',
+    '585e9cc93e70b39160e7921475f9bcd7d31219ce')
+
+DATA_HUB['kaggle_house_test'] = (
+    DATA_URL + 'kaggle_house_pred_test.csv',
+    'fa19780a7b011d9b009e8bff8e99922a8ee2eb90')
+
+DATA_HUB['time_machine'] = (DATA_URL + 'timemachine.txt',
+                                '090b5e7e70c295757f55df93cb0a180b9691891a')
+
+DATA_HUB['fra-eng'] = (DATA_URL + 'fra-eng.zip',
                            '94646ad1522d915e7b0f9296181140edcf86a4f5')
+
+DATA_HUB['airfoil'] = (DATA_URL + 'airfoil_self_noise.dat',
+                           '76e5be1548fd8222e5074cf0faae75edff8cf93f')
+
+DATA_HUB['hotdog'] = (DATA_URL + 'hotdog.zip',
+                         'fba480ffa8aa7e0febbb511d181409f899b9baa5')
+
+DATA_HUB['banana-detection'] = (
+    DATA_URL + 'banana-detection.zip',
+    '5de26c8fce5ccdea9f91267273464dc968d20d72')
+
+DATA_HUB['voc2012'] = (DATA_URL + 'VOCtrainval_11-May-2012.tar',
+                           '4e443f8a2eca6b1dac8a6c57641b67dd40621a49')
+
+DATA_HUB['cifar10_tiny'] = (DATA_URL + 'kaggle_cifar10_tiny.zip',
+                                '2068874e4b9a9f0fb07ebe0ad2b29754449ccacd')
+
+DATA_HUB['dog_tiny'] = (DATA_URL + 'kaggle_dog_tiny.zip',
+                            '0cb91d09b814ecdc07b50f31f8dcad3e81d6a86d')
+
+DATA_HUB['ptb'] = (DATA_URL + 'ptb.zip',
+                       '319d85e578af0cdc590547f26231e4e31cdf1e42')
+
+DATA_HUB['glove.6b.50d'] = (DATA_URL + 'glove.6B.50d.zip',
+                                '0b8703943ccdb6eb788e6f091b8946e82231bc4d')
+
+DATA_HUB['glove.6b.100d'] = (DATA_URL + 'glove.6B.100d.zip',
+                                 'cd43bfb07e44e6f27cbcc7bc9ae3d80284fdaf5a')
+
+DATA_HUB['glove.42b.300d'] = (DATA_URL + 'glove.42B.300d.zip',
+                                  'b5116e234e9eb9076672cfeabf5469f3eec904fa')
+
+DATA_HUB['wiki.en'] = (DATA_URL + 'wiki.en.zip',
+                           'c1816da3821ae9f43899be655002f6c723e91b88')
+
+DATA_HUB['wikitext-2'] = (
+    'https://s3.amazonaws.com/research.metamind.io/wikitext/'
+    'wikitext-2-v1.zip', '3c914d17d80b1459be871a5039ac23e752a53cbe')
+
+DATA_HUB['aclImdb'] = (
+    'http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz',
+    '01ada507287d82875905620988597833ad4e0903')
+
+DATA_HUB['SNLI'] = (
+    'https://nlp.stanford.edu/projects/snli/snli_1.0.zip',
+    '9fcde07509c7e87ec61c640c1b2753d9041758e4')
+
+def download(name, cache_dir=os.path.join('..', 'data_sets')):
+    """下载一个DATA_HUB中的文件，返回本地文件名"""
+    assert name in DATA_HUB, f"{name} 不存在于 {DATA_HUB}"
+    url, sha1_hash = DATA_HUB[name]
+    os.makedirs(cache_dir, exist_ok=True)
+    fname = os.path.join(cache_dir, url.split('/')[-1])
+    if os.path.exists(fname):
+        sha1 = hashlib.sha1()
+        with open(fname, 'rb') as f:
+            while True:
+                data = f.read(1048576)
+                if not data:
+                    break
+                sha1.update(data)
+        if sha1.hexdigest() == sha1_hash:
+            return fname  # 命中缓存
+    print(f'正在从{url}下载{fname}...')
+    r = requests.get(url, stream=True, verify=True)
+    with open(fname, 'wb') as f:
+        f.write(r.content)
+    return fname
+
+def download_extract(name, folder=None):
+    """下载并解压zip/tar文件"""
+    fname = download(name)
+    base_dir = os.path.dirname(fname)
+    data_dir, ext = os.path.splitext(fname)
+    if ext == '.zip':
+        fp = zipfile.ZipFile(fname, 'r')
+    elif ext in ('.tar', '.gz'):
+        fp = tarfile.open(fname, 'r')
+    else:
+        assert False, '只有zip/tar文件可以被解压缩'
+    fp.extractall(base_dir)
+    return os.path.join(base_dir, folder) if folder else data_dir
+
+def download_all():
+    """下载DATA_HUB中的所有文件"""
+    for name in DATA_HUB:
+        download(name)
+        
+
+def load_array(data_arrays, batch_size, is_train=True):
+    """构造一个PyTorch数据迭代器"""
+    dataset = data.TensorDataset(*data_arrays)
+    return data.DataLoader(dataset, batch_size, shuffle=is_train)
+
+def get_fashion_mnist_labels(labels):
+    """返回Fashion-MNIST数据集的文本标签"""
+    text_labels = ['t-shirt', 'trouser', 'pullover', 'dress', 'coat',
+                   'sandal', 'shirt', 'sneaker', 'bag', 'ankle boot']
+    return [text_labels[int(i)] for i in labels]
+
+def load_data_fashion_mnist(batch_size, resize=None):
+    """下载Fashion-MNIST数据集，然后将其加载到内存中"""
+    trans = [transforms.ToTensor()]
+    if resize:
+        trans.insert(0, transforms.Resize(resize))
+    trans = transforms.Compose(trans)
+    mnist_train = torchvision.datasets.FashionMNIST(
+        root="../data_sets", train=True, transform=trans, download=False)
+    mnist_test = torchvision.datasets.FashionMNIST(
+        root="../data_sets", train=False, transform=trans, download=False)
+    return (data.DataLoader(mnist_train, batch_size, shuffle=True,
+                            num_workers=get_dataloader_workers()),
+            data.DataLoader(mnist_test, batch_size, shuffle=False,
+                            num_workers=get_dataloader_workers()))
+
+def load_corpus_time_machine(max_tokens=-1):
+    """返回时光机器数据集的词元索引列表和词表"""
+    lines = read_time_machine()
+    tokens = tokenize(lines, 'char')
+    vocab = Vocab(tokens)
+    # 因为时光机器数据集中的每个文本行不一定是一个句子或一个段落，
+    # 所以将所有文本行展平到一个列表中
+    corpus = [vocab[token] for line in tokens for token in line]
+    if max_tokens > 0:
+        corpus = corpus[:max_tokens]
+    return corpus, vocab
 
 def read_data_nmt():
     """载入“英语－法语”数据集"""
@@ -565,308 +671,17 @@ def load_data_nmt(batch_size, num_steps, num_examples=600):
     data_iter = tpy.load_array(data_arrays, batch_size)
     return data_iter, src_vocab, tgt_vocab
 
-class Encoder(nn.Module):
-    """编码器-解码器架构的基本编码器接口"""
-    def __init__(self, **kwargs):
-        super(Encoder, self).__init__(**kwargs)
-
-    def forward(self, X, *args):
-        raise NotImplementedError
-
-class Decoder(nn.Module):
-    """编码器-解码器架构的基本解码器接口"""
-    def __init__(self, **kwargs):
-        super(Decoder, self).__init__(**kwargs)
-
-    def init_state(self, enc_outputs, *args):
-        raise NotImplementedError
-
-    def forward(self, X, state):
-        raise NotImplementedError
-
-class EncoderDecoder(nn.Module):
-    """编码器-解码器架构的基类"""
-    def __init__(self, encoder, decoder, **kwargs):
-        super(EncoderDecoder, self).__init__(**kwargs)
-        self.encoder = encoder
-        self.decoder = decoder
-
-    def forward(self, enc_X, dec_X, *args):
-        enc_outputs = self.encoder(enc_X, *args)
-        dec_state = self.decoder.init_state(enc_outputs, *args)
-        return self.decoder(dec_X, dec_state)
-
-class Seq2SeqEncoder(tpy.Encoder):
-    """用于序列到序列学习的循环神经网络编码器"""
-    def __init__(self, vocab_size, embed_size, num_hiddens, num_layers,
-                 dropout=0, **kwargs):
-        super(Seq2SeqEncoder, self).__init__(**kwargs)
-        # 嵌入层
-        self.embedding = nn.Embedding(vocab_size, embed_size)
-        self.rnn = nn.GRU(embed_size, num_hiddens, num_layers,
-                          dropout=dropout)
-
-    def forward(self, X, *args):
-        # 输出'X'的形状：(`batch_size`,`num_steps`,`embed_size`)
-        X = self.embedding(X)
-        # 在循环神经网络模型中，第一个轴对应于时间步
-        X = X.permute(1, 0, 2)
-        # 如果未提及状态，则默认为0
-        output, state = self.rnn(X)
-        # `output`的形状:(`num_steps`,`batch_size`,`num_hiddens`)
-        # `state[0]`的形状:(`num_layers`,`batch_size`,`num_hiddens`)
-        return output, state
-
-def sequence_mask(X, valid_len, value=0):
-    """在序列中屏蔽不相关的项"""
-    maxlen = X.size(1)
-    mask = torch.arange((maxlen), dtype=torch.float32,
-                        device=X.device)[None, :] < valid_len[:, None]
-    X[~mask] = value
-    return X
-
-class MaskedSoftmaxCELoss(nn.CrossEntropyLoss):
-    """带遮蔽的softmax交叉熵损失函数"""
-    # `pred`的形状：(`batch_size`,`num_steps`,`vocab_size`)
-    # `label`的形状：(`batch_size`,`num_steps`)
-    # `valid_len`的形状：(`batch_size`,)
-    def forward(self, pred, label, valid_len):
-        weights = torch.ones_like(label)
-        weights = sequence_mask(weights, valid_len)
-        self.reduction='none'
-        unweighted_loss = super(MaskedSoftmaxCELoss, self).forward(
-            pred.permute(0, 2, 1), label)
-        weighted_loss = (unweighted_loss * weights).mean(dim=1)
-        return weighted_loss
-
-def bleu(pred_seq, label_seq, k):
-    """计算BLEU"""
-    pred_tokens, label_tokens = pred_seq.split(' '), label_seq.split(' ')
-    len_pred, len_label = len(pred_tokens), len(label_tokens)
-    score = math.exp(min(0, 1 - len_label / len_pred))
-    for n in range(1, k + 1):
-        num_matches, label_subs = 0, collections.defaultdict(int)
-        for i in range(len_label - n + 1):
-            label_subs[' '.join(label_tokens[i: i + n])] += 1
-        for i in range(len_pred - n + 1):
-            if label_subs[' '.join(pred_tokens[i: i + n])] > 0:
-                num_matches += 1
-                label_subs[' '.join(pred_tokens[i: i + n])] -= 1
-        score *= math.pow(num_matches / (len_pred - n + 1), math.pow(0.5, n))
-    return score
-
-def show_heatmaps(matrices, xlabel, ylabel, titles=None, figsize=(2.5, 2.5),
-                  cmap='Reds'):
-    """显示矩阵热图"""
-    tpy.use_svg_display()
-    num_rows, num_cols = matrices.shape[0], matrices.shape[1]
-    fig, axes = tpy.plt.subplots(num_rows, num_cols, figsize=figsize,
-                                 sharex=True, sharey=True, squeeze=False)
-    for i, (row_axes, row_matrices) in enumerate(zip(axes, matrices)):
-        for j, (ax, matrix) in enumerate(zip(row_axes, row_matrices)):
-            pcm = ax.imshow(tpy.numpy(matrix), cmap=cmap)
-            if i == num_rows - 1:
-                ax.set_xlabel(xlabel)
-            if j == 0:
-                ax.set_ylabel(ylabel)
-            if titles:
-                ax.set_title(titles[j])
-    fig.colorbar(pcm, ax=axes, shrink=0.6);
-
-def masked_softmax(X, valid_lens):
-    """通过在最后一个轴上掩蔽元素来执行softmax操作"""
-    # `X`:3D张量，`valid_lens`:1D或2D张量
-    if valid_lens is None:
-        return nn.functional.softmax(X, dim=-1)
-    else:
-        shape = X.shape
-        if valid_lens.dim() == 1:
-            valid_lens = torch.repeat_interleave(valid_lens, shape[1])
-        else:
-            valid_lens = valid_lens.reshape(-1)
-        # 最后一轴上被掩蔽的元素使用一个非常大的负值替换，从而其softmax输出为0
-        X = tpy.sequence_mask(X.reshape(-1, shape[-1]), valid_lens,
-                              value=-1e6)
-        return nn.functional.softmax(X.reshape(shape), dim=-1)
-
-class AdditiveAttention(nn.Module):
-    """加性注意力"""
-    def __init__(self, key_size, query_size, num_hiddens, dropout, **kwargs):
-        super(AdditiveAttention, self).__init__(**kwargs)
-        self.W_k = nn.Linear(key_size, num_hiddens, bias=False)
-        self.W_q = nn.Linear(query_size, num_hiddens, bias=False)
-        self.w_v = nn.Linear(num_hiddens, 1, bias=False)
-        self.dropout = nn.Dropout(dropout)
-
-    def forward(self, queries, keys, values, valid_lens):
-        queries, keys = self.W_q(queries), self.W_k(keys)
-        # 在维度扩展后，
-        # `queries`的形状：(`batch_size`，查询的个数，1，`num_hidden`)
-        # `key`的形状：(`batch_size`，1，“键－值”对的个数，`num_hiddens`)
-        # 使用广播方式进行求和
-        features = queries.unsqueeze(2) + keys.unsqueeze(1)
-        features = torch.tanh(features)
-        # `self.w_v`仅有一个输出，因此从形状中移除最后那个维度。
-        # `scores`的形状：(`batch_size`，查询的个数，“键-值”对的个数)
-        scores = self.w_v(features).squeeze(-1)
-        self.attention_weights = masked_softmax(scores, valid_lens)
-        # `values`的形状：(`batch_size`，“键－值”对的个数，值的维度)
-        return torch.bmm(self.dropout(self.attention_weights), values)
-
-class DotProductAttention(nn.Module):
-    """缩放点积注意力"""
-    def __init__(self, dropout, **kwargs):
-        super(DotProductAttention, self).__init__(**kwargs)
-        self.dropout = nn.Dropout(dropout)
-
-    # `queries`的形状：(`batch_size`，查询的个数，`d`)
-    # `keys`的形状：(`batch_size`，“键－值”对的个数，`d`)
-    # `values`的形状：(`batch_size`，“键－值”对的个数，值的维度)
-    # `valid_lens`的形状:(`batch_size`，)或者(`batch_size`，查询的个数)
-    def forward(self, queries, keys, values, valid_lens=None):
-        d = queries.shape[-1]
-        # 设置`transpose_b=True`为了交换`keys`的最后两个维度
-        scores = torch.bmm(queries, keys.transpose(1,2)) / math.sqrt(d)
-        self.attention_weights = masked_softmax(scores, valid_lens)
-        return torch.bmm(self.dropout(self.attention_weights), values)
-
-class AttentionDecoder(tpy.Decoder):
-    """带有注意力机制解码器的基本接口"""
-    def __init__(self, **kwargs):
-        super(AttentionDecoder, self).__init__(**kwargs)
-
-    @property
-    def attention_weights(self):
-        raise NotImplementedError
-
-class MultiHeadAttention(nn.Module):
-    """多头注意力"""
-    def __init__(self, key_size, query_size, value_size, num_hiddens,
-                 num_heads, dropout, bias=False, **kwargs):
-        super(MultiHeadAttention, self).__init__(**kwargs)
-        self.num_heads = num_heads
-        self.attention = tpy.DotProductAttention(dropout)
-        self.W_q = nn.Linear(query_size, num_hiddens, bias=bias)
-        self.W_k = nn.Linear(key_size, num_hiddens, bias=bias)
-        self.W_v = nn.Linear(value_size, num_hiddens, bias=bias)
-        self.W_o = nn.Linear(num_hiddens, num_hiddens, bias=bias)
-
-    def forward(self, queries, keys, values, valid_lens):
-        # `queries`，`keys`，`values`的形状:
-        # (`batch_size`，查询或者“键－值”对的个数，`num_hiddens`)
-        # `valid_lens`　的形状:
-        # (`batch_size`，)或(`batch_size`，查询的个数)
-        # 经过变换后，输出的`queries`，`keys`，`values`　的形状:
-        # (`batch_size`*`num_heads`，查询或者“键－值”对的个数，
-        # `num_hiddens`/`num_heads`)
-        queries = transpose_qkv(self.W_q(queries), self.num_heads)
-        keys = transpose_qkv(self.W_k(keys), self.num_heads)
-        values = transpose_qkv(self.W_v(values), self.num_heads)
-
-        if valid_lens is not None:
-            # 在轴0，将第一项（标量或者矢量）复制`num_heads`次，
-            # 然后如此复制第二项，然后诸如此类。
-            valid_lens = torch.repeat_interleave(
-                valid_lens, repeats=self.num_heads, dim=0)
-
-        # `output`的形状:(`batch_size`*`num_heads`，查询的个数，
-        # `num_hiddens`/`num_heads`)
-        output = self.attention(queries, keys, values, valid_lens)
-
-        # `output_concat`的形状:(`batch_size`，查询的个数，`num_hiddens`)
-        output_concat = transpose_output(output, self.num_heads)
-        return self.W_o(output_concat)
-
-def transpose_qkv(X, num_heads):
-    """为了多注意力头的并行计算而变换形状"""
-    # 输入`X`的形状:(`batch_size`，查询或者“键－值”对的个数，`num_hiddens`)
-    # 输出`X`的形状:(`batch_size`，查询或者“键－值”对的个数，`num_heads`，
-    # `num_hiddens`/`num_heads`)
-    X = X.reshape(X.shape[0], X.shape[1], num_heads, -1)
-
-    # 输出`X`的形状:(`batch_size`，`num_heads`，查询或者“键－值”对的个数,
-    # `num_hiddens`/`num_heads`)
-    X = X.permute(0, 2, 1, 3)
-
-    # 最终输出的形状:(`batch_size`*`num_heads`,查询或者“键－值”对的个数,
-    # `num_hiddens`/`num_heads`)
-    return X.reshape(-1, X.shape[2], X.shape[3])
 
 
-def transpose_output(X, num_heads):
-    """逆转`transpose_qkv`函数的操作"""
-    X = X.reshape(-1, num_heads, X.shape[1], X.shape[2])
-    X = X.permute(0, 2, 1, 3)
-    return X.reshape(X.shape[0], X.shape[1], -1)
-
-class PositionalEncoding(nn.Module):
-    """位置编码"""
-    def __init__(self, num_hiddens, dropout, max_len=1000):
-        super(PositionalEncoding, self).__init__()
-        self.dropout = nn.Dropout(dropout)
-        # 创建一个足够长的`P`
-        self.P = tpy.zeros((1, max_len, num_hiddens))
-        X = tpy.arange(max_len, dtype=torch.float32).reshape(
-            -1, 1) / torch.pow(10000, torch.arange(
-            0, num_hiddens, 2, dtype=torch.float32) / num_hiddens)
-        self.P[:, :, 0::2] = torch.sin(X)
-        self.P[:, :, 1::2] = torch.cos(X)
-
-    def forward(self, X):
-        X = X + self.P[:, :X.shape[1], :].to(X.device)
-        return self.dropout(X)
-
-def annotate(text, xy, xytext):
-    tpy.plt.gca().annotate(text, xy=xy, xytext=xytext,
-                           arrowprops=dict(arrowstyle='->'))
-
-def train_2d(trainer, steps=20, f_grad=None):
-    """用定制的训练机优化2D目标函数"""
-    # `s1`和`s2`是稍后将使用的内部状态变量
-    x1, x2, s1, s2 = -5, -2, 0, 0
-    results = [(x1, x2)]
-    for i in range(steps):
-        if f_grad:
-            x1, x2, s1, s2 = trainer(x1, x2, s1, s2, f_grad)
-        else:
-            x1, x2, s1, s2 = trainer(x1, x2, s1, s2)
-        results.append((x1, x2))
-    print(f'epoch {i + 1}, x1: {float(x1):f}, x2: {float(x2):f}')
-    return results
-
-def show_trace_2d(f, results):
-    """显示优化过程中2D变量的轨迹"""
-    tpy.set_figsize()
-    tpy.plt.plot(*zip(*results), '-o', color='#ff7f0e')
-    x1, x2 = tpy.meshgrid(tpy.arange(-5.5, 1.0, 0.1),
-                          tpy.arange(-3.0, 1.0, 0.1))
-    tpy.plt.contour(x1, x2, f(x1, x2), colors='#1f77b4')
-    tpy.plt.xlabel('x1')
-    tpy.plt.ylabel('x2')
-
-tpy.DATA_HUB['airfoil'] = (tpy.DATA_URL + 'airfoil_self_noise.dat',
-                           '76e5be1548fd8222e5074cf0faae75edff8cf93f')
-
-class Benchmark:
-    """用于测量运行时间"""
-    def __init__(self, description='Done'):
-        self.description = description
-
-    def __enter__(self):
-        self.timer = tpy.Timer()
-        return self
-
-    def __exit__(self, *args):
-        print(f'{self.description}: {self.timer.stop():.4f} sec')
-
+ 
+# -----------------------------------------
+# 图像检测
+# -----------------------------------------
 def split_batch(X, y, devices):
     """将`X`和`y`拆分到多个设备上"""
     assert X.shape[0] == y.shape[0]
     return (nn.parallel.scatter(X, devices),
             nn.parallel.scatter(y, devices))
-
-tpy.DATA_HUB['hotdog'] = (tpy.DATA_URL + 'hotdog.zip',
-                         'fba480ffa8aa7e0febbb511d181409f899b9baa5')
 
 def box_corner_to_center(boxes):
     """从（左上，右下）转换到（中间，宽度，高度）"""
@@ -1095,10 +910,6 @@ def multibox_detection(cls_probs, offset_preds, anchors, nms_threshold=0.5,
         out.append(pred_info)
     return tpy.stack(out)
 
-tpy.DATA_HUB['banana-detection'] = (
-    tpy.DATA_URL + 'banana-detection.zip',
-    '5de26c8fce5ccdea9f91267273464dc968d20d72')
-
 def read_data_bananas(is_train=True):
     """读取香蕉检测数据集中的图像和标签"""
     data_dir = tpy.download_extract('banana-detection')
@@ -1137,8 +948,260 @@ def load_data_bananas(batch_size):
                                            batch_size)
     return train_iter, val_iter
 
-tpy.DATA_HUB['voc2012'] = (tpy.DATA_URL + 'VOCtrainval_11-May-2012.tar',
-                           '4e443f8a2eca6b1dac8a6c57641b67dd40621a49')
+
+
+# -----------------------------------------
+# transformer&bert
+# 包括相关数据集操作，情感分析工具方法等
+# -----------------------------------------
+class Encoder(nn.Module):
+    """编码器-解码器架构的基本编码器接口"""
+    def __init__(self, **kwargs):
+        super(Encoder, self).__init__(**kwargs)
+
+    def forward(self, X, *args):
+        raise NotImplementedError
+
+class Decoder(nn.Module):
+    """编码器-解码器架构的基本解码器接口"""
+    def __init__(self, **kwargs):
+        super(Decoder, self).__init__(**kwargs)
+
+    def init_state(self, enc_outputs, *args):
+        raise NotImplementedError
+
+    def forward(self, X, state):
+        raise NotImplementedError
+
+class EncoderDecoder(nn.Module):
+    """编码器-解码器架构的基类"""
+    def __init__(self, encoder, decoder, **kwargs):
+        super(EncoderDecoder, self).__init__(**kwargs)
+        self.encoder = encoder
+        self.decoder = decoder
+
+    def forward(self, enc_X, dec_X, *args):
+        enc_outputs = self.encoder(enc_X, *args)
+        dec_state = self.decoder.init_state(enc_outputs, *args)
+        return self.decoder(dec_X, dec_state)
+
+class Seq2SeqEncoder(tpy.Encoder):
+    """用于序列到序列学习的循环神经网络编码器"""
+    def __init__(self, vocab_size, embed_size, num_hiddens, num_layers,
+                 dropout=0, **kwargs):
+        super(Seq2SeqEncoder, self).__init__(**kwargs)
+        # 嵌入层
+        self.embedding = nn.Embedding(vocab_size, embed_size)
+        self.rnn = nn.GRU(embed_size, num_hiddens, num_layers,
+                          dropout=dropout)
+
+    def forward(self, X, *args):
+        # 输出'X'的形状：(`batch_size`,`num_steps`,`embed_size`)
+        X = self.embedding(X)
+        # 在循环神经网络模型中，第一个轴对应于时间步
+        X = X.permute(1, 0, 2)
+        # 如果未提及状态，则默认为0
+        output, state = self.rnn(X)
+        # `output`的形状:(`num_steps`,`batch_size`,`num_hiddens`)
+        # `state[0]`的形状:(`num_layers`,`batch_size`,`num_hiddens`)
+        return output, state
+
+def sequence_mask(X, valid_len, value=0):
+    """在序列中屏蔽不相关的项"""
+    maxlen = X.size(1)
+    mask = torch.arange((maxlen), dtype=torch.float32,
+                        device=X.device)[None, :] < valid_len[:, None]
+    X[~mask] = value
+    return X
+
+class MaskedSoftmaxCELoss(nn.CrossEntropyLoss):
+    """带遮蔽的softmax交叉熵损失函数"""
+    # `pred`的形状：(`batch_size`,`num_steps`,`vocab_size`)
+    # `label`的形状：(`batch_size`,`num_steps`)
+    # `valid_len`的形状：(`batch_size`,)
+    def forward(self, pred, label, valid_len):
+        weights = torch.ones_like(label)
+        weights = sequence_mask(weights, valid_len)
+        self.reduction='none'
+        unweighted_loss = super(MaskedSoftmaxCELoss, self).forward(
+            pred.permute(0, 2, 1), label)
+        weighted_loss = (unweighted_loss * weights).mean(dim=1)
+        return weighted_loss
+
+
+
+def masked_softmax(X, valid_lens):
+    """通过在最后一个轴上掩蔽元素来执行softmax操作"""
+    # `X`:3D张量，`valid_lens`:1D或2D张量
+    if valid_lens is None:
+        return nn.functional.softmax(X, dim=-1)
+    else:
+        shape = X.shape
+        if valid_lens.dim() == 1:
+            valid_lens = torch.repeat_interleave(valid_lens, shape[1])
+        else:
+            valid_lens = valid_lens.reshape(-1)
+        # 最后一轴上被掩蔽的元素使用一个非常大的负值替换，从而其softmax输出为0
+        X = tpy.sequence_mask(X.reshape(-1, shape[-1]), valid_lens,
+                              value=-1e6)
+        return nn.functional.softmax(X.reshape(shape), dim=-1)
+
+class AdditiveAttention(nn.Module):
+    """加性注意力"""
+    def __init__(self, key_size, query_size, num_hiddens, dropout, **kwargs):
+        super(AdditiveAttention, self).__init__(**kwargs)
+        self.W_k = nn.Linear(key_size, num_hiddens, bias=False)
+        self.W_q = nn.Linear(query_size, num_hiddens, bias=False)
+        self.w_v = nn.Linear(num_hiddens, 1, bias=False)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, queries, keys, values, valid_lens):
+        queries, keys = self.W_q(queries), self.W_k(keys)
+        # 在维度扩展后，
+        # `queries`的形状：(`batch_size`，查询的个数，1，`num_hidden`)
+        # `key`的形状：(`batch_size`，1，“键－值”对的个数，`num_hiddens`)
+        # 使用广播方式进行求和
+        features = queries.unsqueeze(2) + keys.unsqueeze(1)
+        features = torch.tanh(features)
+        # `self.w_v`仅有一个输出，因此从形状中移除最后那个维度。
+        # `scores`的形状：(`batch_size`，查询的个数，“键-值”对的个数)
+        scores = self.w_v(features).squeeze(-1)
+        self.attention_weights = masked_softmax(scores, valid_lens)
+        # `values`的形状：(`batch_size`，“键－值”对的个数，值的维度)
+        return torch.bmm(self.dropout(self.attention_weights), values)
+
+class DotProductAttention(nn.Module):
+    """缩放点积注意力"""
+    def __init__(self, dropout, **kwargs):
+        super(DotProductAttention, self).__init__(**kwargs)
+        self.dropout = nn.Dropout(dropout)
+
+    # `queries`的形状：(`batch_size`，查询的个数，`d`)
+    # `keys`的形状：(`batch_size`，“键－值”对的个数，`d`)
+    # `values`的形状：(`batch_size`，“键－值”对的个数，值的维度)
+    # `valid_lens`的形状:(`batch_size`，)或者(`batch_size`，查询的个数)
+    def forward(self, queries, keys, values, valid_lens=None):
+        d = queries.shape[-1]
+        # 设置`transpose_b=True`为了交换`keys`的最后两个维度
+        scores = torch.bmm(queries, keys.transpose(1,2)) / math.sqrt(d)
+        self.attention_weights = masked_softmax(scores, valid_lens)
+        return torch.bmm(self.dropout(self.attention_weights), values)
+
+class AttentionDecoder(tpy.Decoder):
+    """带有注意力机制解码器的基本接口"""
+    def __init__(self, **kwargs):
+        super(AttentionDecoder, self).__init__(**kwargs)
+
+    @property
+    def attention_weights(self):
+        raise NotImplementedError
+
+class MultiHeadAttention(nn.Module):
+    """多头注意力"""
+    def __init__(self, key_size, query_size, value_size, num_hiddens,
+                 num_heads, dropout, bias=False, **kwargs):
+        super(MultiHeadAttention, self).__init__(**kwargs)
+        self.num_heads = num_heads
+        self.attention = tpy.DotProductAttention(dropout)
+        self.W_q = nn.Linear(query_size, num_hiddens, bias=bias)
+        self.W_k = nn.Linear(key_size, num_hiddens, bias=bias)
+        self.W_v = nn.Linear(value_size, num_hiddens, bias=bias)
+        self.W_o = nn.Linear(num_hiddens, num_hiddens, bias=bias)
+
+    def forward(self, queries, keys, values, valid_lens):
+        # `queries`，`keys`，`values`的形状:
+        # (`batch_size`，查询或者“键－值”对的个数，`num_hiddens`)
+        # `valid_lens`　的形状:
+        # (`batch_size`，)或(`batch_size`，查询的个数)
+        # 经过变换后，输出的`queries`，`keys`，`values`　的形状:
+        # (`batch_size`*`num_heads`，查询或者“键－值”对的个数，
+        # `num_hiddens`/`num_heads`)
+        queries = transpose_qkv(self.W_q(queries), self.num_heads)
+        keys = transpose_qkv(self.W_k(keys), self.num_heads)
+        values = transpose_qkv(self.W_v(values), self.num_heads)
+
+        if valid_lens is not None:
+            # 在轴0，将第一项（标量或者矢量）复制`num_heads`次，
+            # 然后如此复制第二项，然后诸如此类。
+            valid_lens = torch.repeat_interleave(
+                valid_lens, repeats=self.num_heads, dim=0)
+
+        # `output`的形状:(`batch_size`*`num_heads`，查询的个数，
+        # `num_hiddens`/`num_heads`)
+        output = self.attention(queries, keys, values, valid_lens)
+
+        # `output_concat`的形状:(`batch_size`，查询的个数，`num_hiddens`)
+        output_concat = transpose_output(output, self.num_heads)
+        return self.W_o(output_concat)
+
+def transpose_qkv(X, num_heads):
+    """为了多注意力头的并行计算而变换形状"""
+    # 输入`X`的形状:(`batch_size`，查询或者“键－值”对的个数，`num_hiddens`)
+    # 输出`X`的形状:(`batch_size`，查询或者“键－值”对的个数，`num_heads`，
+    # `num_hiddens`/`num_heads`)
+    X = X.reshape(X.shape[0], X.shape[1], num_heads, -1)
+
+    # 输出`X`的形状:(`batch_size`，`num_heads`，查询或者“键－值”对的个数,
+    # `num_hiddens`/`num_heads`)
+    X = X.permute(0, 2, 1, 3)
+
+    # 最终输出的形状:(`batch_size`*`num_heads`,查询或者“键－值”对的个数,
+    # `num_hiddens`/`num_heads`)
+    return X.reshape(-1, X.shape[2], X.shape[3])
+
+
+def transpose_output(X, num_heads):
+    """逆转`transpose_qkv`函数的操作"""
+    X = X.reshape(-1, num_heads, X.shape[1], X.shape[2])
+    X = X.permute(0, 2, 1, 3)
+    return X.reshape(X.shape[0], X.shape[1], -1)
+
+class PositionalEncoding(nn.Module):
+    """位置编码"""
+    def __init__(self, num_hiddens, dropout, max_len=1000):
+        super(PositionalEncoding, self).__init__()
+        self.dropout = nn.Dropout(dropout)
+        # 创建一个足够长的`P`
+        self.P = tpy.zeros((1, max_len, num_hiddens))
+        X = tpy.arange(max_len, dtype=torch.float32).reshape(
+            -1, 1) / torch.pow(10000, torch.arange(
+            0, num_hiddens, 2, dtype=torch.float32) / num_hiddens)
+        self.P[:, :, 0::2] = torch.sin(X)
+        self.P[:, :, 1::2] = torch.cos(X)
+
+    def forward(self, X):
+        X = X + self.P[:, :X.shape[1], :].to(X.device)
+        return self.dropout(X)
+
+def annotate(text, xy, xytext):
+    tpy.plt.gca().annotate(text, xy=xy, xytext=xytext,
+                           arrowprops=dict(arrowstyle='->'))
+
+def train_2d(trainer, steps=20, f_grad=None):
+    """用定制的训练机优化2D目标函数"""
+    # `s1`和`s2`是稍后将使用的内部状态变量
+    x1, x2, s1, s2 = -5, -2, 0, 0
+    results = [(x1, x2)]
+    for i in range(steps):
+        if f_grad:
+            x1, x2, s1, s2 = trainer(x1, x2, s1, s2, f_grad)
+        else:
+            x1, x2, s1, s2 = trainer(x1, x2, s1, s2)
+        results.append((x1, x2))
+    print(f'epoch {i + 1}, x1: {float(x1):f}, x2: {float(x2):f}')
+    return results
+
+class Benchmark:
+    """用于测量运行时间"""
+    def __init__(self, description='Done'):
+        self.description = description
+
+    def __enter__(self):
+        self.timer = tpy.Timer()
+        return self
+
+    def __exit__(self, *args):
+        print(f'{self.description}: {self.timer.stop():.4f} sec')
 
 def read_voc_images(voc_dir, is_train=True):
     """读取所有VOC图像并标注"""
@@ -1233,9 +1296,6 @@ def load_data_voc(batch_size, crop_size):
         drop_last=True, num_workers=num_workers)
     return train_iter, test_iter
 
-tpy.DATA_HUB['cifar10_tiny'] = (tpy.DATA_URL + 'kaggle_cifar10_tiny.zip',
-                                '2068874e4b9a9f0fb07ebe0ad2b29754449ccacd')
-
 def read_csv_labels(fname):
     """读取`fname`来给标签字典返回一个文件名"""
     with open(fname, 'r') as f:
@@ -1276,12 +1336,6 @@ def reorg_test(data_dir):
         copyfile(os.path.join(data_dir, 'test', test_file),
                  os.path.join(data_dir, 'train_valid_test', 'test',
                               'unknown'))
-
-tpy.DATA_HUB['dog_tiny'] = (tpy.DATA_URL + 'kaggle_dog_tiny.zip',
-                            '0cb91d09b814ecdc07b50f31f8dcad3e81d6a86d')
-
-tpy.DATA_HUB['ptb'] = (tpy.DATA_URL + 'ptb.zip',
-                       '319d85e578af0cdc590547f26231e4e31cdf1e42')
 
 def read_ptb():
     """将PTB数据集加载到文本行的列表中"""
@@ -1408,17 +1462,7 @@ def load_data_ptb(batch_size, max_window_size, num_noise_words):
         collate_fn=batchify, num_workers=num_workers)
     return data_iter, vocab
 
-tpy.DATA_HUB['glove.6b.50d'] = (tpy.DATA_URL + 'glove.6B.50d.zip',
-                                '0b8703943ccdb6eb788e6f091b8946e82231bc4d')
 
-tpy.DATA_HUB['glove.6b.100d'] = (tpy.DATA_URL + 'glove.6B.100d.zip',
-                                 'cd43bfb07e44e6f27cbcc7bc9ae3d80284fdaf5a')
-
-tpy.DATA_HUB['glove.42b.300d'] = (tpy.DATA_URL + 'glove.42B.300d.zip',
-                                  'b5116e234e9eb9076672cfeabf5469f3eec904fa')
-
-tpy.DATA_HUB['wiki.en'] = (tpy.DATA_URL + 'wiki.en.zip',
-                           'c1816da3821ae9f43899be655002f6c723e91b88')
 
 class TokenEmbedding:
     """GloVe嵌入"""
@@ -1524,9 +1568,7 @@ class BERTModel(nn.Module):
         nsp_Y_hat = self.nsp(self.hidden(encoded_X[:, 0, :]))
         return encoded_X, mlm_Y_hat, nsp_Y_hat
 
-tpy.DATA_HUB['wikitext-2'] = (
-    'https://s3.amazonaws.com/research.metamind.io/wikitext/'
-    'wikitext-2-v1.zip', '3c914d17d80b1459be871a5039ac23e752a53cbe')
+
 
 def _read_wiki(data_dir):
     file_name = os.path.join(data_dir, 'wiki.train.tokens')
@@ -1690,10 +1732,6 @@ def _get_batch_loss_bert(net, loss, vocab_size, tokens_X,
     l = mlm_l + nsp_l
     return mlm_l, nsp_l, l
 
-tpy.DATA_HUB['aclImdb'] = (
-    'http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz',
-    '01ada507287d82875905620988597833ad4e0903')
-
 def read_imdb(data_dir, is_train):
     """读取IMDb评论数据集文本序列和标签"""
     data, labels = [], []
@@ -1731,10 +1769,6 @@ def predict_sentiment(net, vocab, sequence):
     sequence = torch.tensor(vocab[sequence.split()], device=tpy.try_gpu())
     label = torch.argmax(net(sequence.reshape(1, -1)), dim=1)
     return 'positive' if label == 1 else 'negative'
-
-tpy.DATA_HUB['SNLI'] = (
-    'https://nlp.stanford.edu/projects/snli/snli_1.0.zip',
-    '9fcde07509c7e87ec61c640c1b2753d9041758e4')
 
 def read_snli(data_dir, is_train):
     """将SNLI数据集解析为前提、假设和标签"""
